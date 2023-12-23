@@ -35,6 +35,17 @@ function TOOL:LeftClick(trace)
 		self:SetStage(0)
 		if CLIENT then return true end
 		local oldEnt = self:GetEnt(0)
+		local oldPos = oldEnt:GetPos()
+		--undo
+		undo.Create("Alignment")
+			undo.AddFunction(function()
+				--PrintTable(oldEnt)
+				if IsValid(oldEnt) then oldEnt:SetPos(oldPos) end
+			end)
+			undo.SetPlayer(self:GetOwner())
+		undo.Finish()
+
+		--align
 		oldEnt:GetPhysicsObject():EnableMotion(false)
 		oldEnt:SetPos(self:get_aligned_pos(ent))
 		return true
