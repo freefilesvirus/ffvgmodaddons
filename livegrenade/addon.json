@@ -1,5 +1,9 @@
 {
-	"title" : "Live Grenade",
-	"type" : "weapon",
-	"tags" : ["fun", "comic"]
+	"title": "Live Grenade",
+	"type": "weapon",
+	"tags": 
+	[
+		"fun",
+		"comic"
+	]
 }
