@@ -35,17 +35,19 @@ function skelify(ent, ply)
 		local originBone = ent:GetBoneName(i)
 		local newBone = ragdoll:LookupBone(originBone)
 		if newBone then
-			local phys = ragdoll:GetPhysicsObjectNum(ragdoll:TranslateBoneToPhysBone(newBone))
-			local pos = ent:GetPhysicsObjectNum(ent:TranslateBoneToPhysBone(i)):GetPos()
-			local ang = ent:GetPhysicsObjectNum(ent:TranslateBoneToPhysBone(i)):GetAngles()
-			local vel = ent:GetPhysicsObjectNum(ent:TranslateBoneToPhysBone(i)):GetVelocity()
+			if IsValid(ent:GetPhysicsObjectNum(ent:TranslateBoneToPhysBone(i))) then
+				local phys = ragdoll:GetPhysicsObjectNum(ragdoll:TranslateBoneToPhysBone(newBone))
+				local pos = ent:GetPhysicsObjectNum(ent:TranslateBoneToPhysBone(i)):GetPos()
+				local ang = ent:GetPhysicsObjectNum(ent:TranslateBoneToPhysBone(i)):GetAngles()
+				local vel = ent:GetPhysicsObjectNum(ent:TranslateBoneToPhysBone(i)):GetVelocity()
 
-			if ent:IsPlayer() then vel = Vector(0,0,0) end
+				if ent:IsPlayer() then vel = Vector(0,0,0) end
 
-			phys:EnableMotion(true)
-			phys:SetPos(pos)
-			phys:SetAngles(ang)
-			phys:SetVelocity(vel)
+				phys:EnableMotion(true)
+				phys:SetPos(pos)
+				phys:SetAngles(ang)
+				phys:SetVelocity(vel)
+			end
 		end
 	end
 
