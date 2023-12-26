@@ -50,7 +50,10 @@ end)
 
 hook.Add("Initialize", "javelinAmmo", function()
 	game.AddAmmoType({name = "javelin"})
-	if SERVER then return end
+	if SERVER then 
+		CreateConVar("jav_weldforcelimit",10000)
+		return
+	end
 	language.Add("javelin_ammo", "Javelins")
 	language.Add("ffv_javelin", "Javelin")
 end)
