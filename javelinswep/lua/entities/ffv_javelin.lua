@@ -63,6 +63,7 @@ function ENT:Think()
 end
 
 function ENT:Use(ply)
+	if (self:GetPhysicsObject():GetVelocity():Length() > 1000) then return end
 	self:Remove()
 	if (ply:GetAmmoCount("javelin") > 0) then ply:GiveAmmo(1, "javelin", true) end
 	ply:Give("ffv_javelinswep")

@@ -12,7 +12,7 @@ SWEP.Primary.Ammo = "javelin"
 SWEP.Secondary.DefaultClip = 0
 SWEP.Secondary.Ammo = ""
 
-function SWEP:SecondaryAttack() return end
+function SWEP:SecondaryAttack() end
 
 function SWEP:PrimaryAttack()
 	self:ShootEffects()
@@ -29,6 +29,7 @@ function SWEP:PrimaryAttack()
 
 	javelin:SetCustomCollisionCheck(true)
 	timer.Simple(.1, function()
+		if (not IsValid(javelin)) then return end
 		javelin:SetCustomCollisionCheck(false)
 	end)
 
@@ -55,24 +56,46 @@ hook.Add("Initialize", "javelinAmmo", function()
 end)
 
 --swep construction kit stuff. thanks clavus!
-SWEP.ViewModelFOV = 41.407035175879
+SWEP.ViewModelFOV = 40
 SWEP.ViewModelFlip = false
 SWEP.UseHands = false
-SWEP.ViewModel = "models/weapons/c_grenade.mdl"
+SWEP.ViewModel = "models/weapons/v_pistol.mdl"
 SWEP.WorldModel = "models/weapons/w_grenade.mdl"
 SWEP.ShowViewModel = false
 SWEP.ShowWorldModel = false
-SWEP.ViewModelBoneMods = {
-	["ValveBiped.Grenade_body"] = { scale = Vector(0.009, 0.009, 0.009), pos = Vector(0, 0, 0), angle = Angle(0, 0, 0) }
-}
-SWEP.IronSightsPos = Vector(4.96, 0, 4.039)
+SWEP.IronSightsPos = Vector(0, -24, -10)
 SWEP.IronSightsAng = Vector(0, 0, 0)
 SWEP.VElements = {
-	["javelin"] = { type = "Model", model = "models/props_junk/harpoon002a.mdl", bone = "ValveBiped.Grenade_body", rel = "", pos = Vector(0, 0, 0), angle = Angle(26.882, -8.183, -31.559), size = Vector(0.5, 0.5, 0.5), color = Color(255, 255, 255, 255), surpresslightning = false, material = "", skin = 0, bodygroup = {} }
+	["javelin"] = { type = "Model", model = "models/props_junk/harpoon002a.mdl", bone = "ValveBiped.square", rel = "", pos = Vector(-1.558, -9.87, 12.987), angle = Angle(92.337, 0, 0), size = Vector(0.5, 0.5, 0.5), color = Color(255, 255, 255, 255), surpresslightning = false, material = "", skin = 0, bodygroup = {} }
 }
 SWEP.WElements = {
 	["javelinworld"] = { type = "Model", model = "models/props_junk/harpoon002a.mdl", bone = "ValveBiped.Bip01_R_Hand", rel = "", pos = Vector(2.596, -16.105, -1.558), angle = Angle(0, -90, 0), size = Vector(1, 1, 1), color = Color(255, 255, 255, 255), surpresslightning = false, material = "", skin = 0, bodygroup = {} }
 }
+
+--this block of code was yoinked from wiki. thanks garry!
+function SWEP:GetViewModelPosition(EyePos, EyeAng)
+	local Mul = 1.0
+
+	local Offset = self.IronSightsPos
+
+	if (self.IronSightsAng) then
+        EyeAng = EyeAng * 1
+        
+		EyeAng:RotateAroundAxis(EyeAng:Right(), 	self.IronSightsAng.x * Mul)
+		EyeAng:RotateAroundAxis(EyeAng:Up(), 		self.IronSightsAng.y * Mul)
+		EyeAng:RotateAroundAxis(EyeAng:Forward(),   self.IronSightsAng.z * Mul)
+	end
+
+	local Right 	= EyeAng:Right()
+	local Up 		= EyeAng:Up()
+	local Forward 	= EyeAng:Forward()
+
+	EyePos = EyePos + Offset.x * Right * Mul
+	EyePos = EyePos + Offset.y * Forward * Mul
+	EyePos = EyePos + Offset.z * Up * Mul
+	
+	return EyePos, EyeAng
+end
 
 /********************************************************
 	SWEP Construction Kit base code
