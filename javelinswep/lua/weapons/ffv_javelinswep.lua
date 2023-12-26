@@ -25,7 +25,7 @@ function SWEP:PrimaryAttack()
 	javelin:SetNWEntity("thrower", ply)
 	javelin:SetPos(ply:GetShootPos())
 	javelin:SetAngles(ply:EyeAngles() + Angle(5,0,0))
-	javelin:GetPhysicsObject():SetVelocity(ply:GetAimVector() * 2000)
+	javelin:GetPhysicsObject():SetVelocity((ply:GetAimVector() * 2000)+ply:GetVelocity())
 
 	javelin:SetCustomCollisionCheck(true)
 	timer.Simple(.1, function()
