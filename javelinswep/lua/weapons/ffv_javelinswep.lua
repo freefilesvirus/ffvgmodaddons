@@ -26,6 +26,7 @@ function SWEP:PrimaryAttack()
 	javelin:SetPos(ply:GetShootPos())
 	javelin:SetAngles(ply:EyeAngles() + Angle(5,0,0))
 	javelin:GetPhysicsObject():SetVelocity((ply:GetAimVector() * 2000)+ply:GetVelocity())
+	javelin:EmitSound(Sound("weapons/slam/throw.wav"))
 
 	javelin:SetCustomCollisionCheck(true)
 	timer.Simple(.1, function()

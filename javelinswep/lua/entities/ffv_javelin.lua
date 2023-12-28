@@ -71,6 +71,8 @@ function ENT:Think()
 			--it hit an object but its gone by the time we get to here
 			weldPart = nil
 			-- self:GetPhysicsObject():EnableMotion(true)
+		else
+			self:GetPhysicsObject():EnableMotion(false)
 		end
 		constraint.Weld(self,weldPart,0,self.objectBone,GetConVar("jav_weldforcelimit"):GetInt(),true,false)
 		self.awaitingWeld = false
