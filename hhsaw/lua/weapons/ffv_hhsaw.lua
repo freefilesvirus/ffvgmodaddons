@@ -23,17 +23,18 @@ end
 
 function SWEP:SecondaryAttack() end
 function SWEP:PrimaryAttack()
+	if (not self:GetNWBool("firing")) then self:EmitSound("ambient/machines/spinup.wav") end
+	self.timeShot = CurTime()
 	if CLIENT then return end
 
 	self:SetNWBool("firing",true)
-	self.timeShot = CurTime()
-	self.test = 0
 end
 
 function SWEP:Think()
 	local ply = self:GetOwner()
+	if (((CurTime()-self.timeShot)>0.02) and self:GetNWBool("firing")) then self:EmitSound("ambient/machines/spindown.wav") end
+
 	--spinny blade wm
-	self.WElements.saw.angle = self.WElements.saw.angle + Angle(-self:GetNWFloat("spinSpeed"),0,0)
 	if CLIENT then
 		--hold pos
 		local animGoal = 1
@@ -55,9 +56,8 @@ function SWEP:Think()
 		return
 	end
 
-	--slowdown sound
+	--stop sound
 	if ((not (self.spinSound == 0)) and (not self:GetNWBool("firing"))) then
-		self:EmitSound("ambient/machines/spindown.wav")
 		self:StopLoopingSound(self.spinSound)
 		self.spinSound = 0
 	end
@@ -65,71 +65,69 @@ function SWEP:Think()
 	if ((CurTime()-self.timeShot)>0.02) then
 		--not firing
 		self:SetNWBool("firing",false)
-		self:SetNWFloat("spinSpeed",to_goal(self:GetNWFloat("spinSpeed"),0,.06))
+		self:SetNWFloat("spinSpeed",to_goal(self:GetNWFloat("spinSpeed"),0,.02))
 	else
 		--is firing
-		self:SetNWFloat("spinSpeed",to_goal(self:GetNWFloat("spinSpeed"),6,.06))
+		self:SetNWFloat("spinSpeed",to_goal(self:GetNWFloat("spinSpeed"),8,.06))
 
-		--start sounds
+		--start sound
 		if (self.spinSound == 0) then
 			self.spinSound = self:StartLoopingSound("ambient/machines/spin_loop.wav")
-			self:EmitSound("ambient/machines/spinup.wav")
 		end
 
-		--actual damage stuff
-		local trace = ply:GetEyeTrace()
-		if ((trace.HitPos-trace.StartPos):Length() < 90) then
-			--stuff timer
-			if (not timer.Exists("sawStuff"..ply:SteamID64())) then
-				timer.Create("sawStuff"..ply:SteamID64(),.2,0,function()
-					--removes the timer if swep is gone or player not looking at something anymore
-					if ((not IsValid(self)) or (not self:GetNWBool("firing"))) then
-						timer.Remove("sawStuff"..ply:SteamID64())
-						return
+		--stuff timer
+		if (not timer.Exists("sawStuff"..ply:SteamID64())) then
+			timer.Create("sawStuff"..ply:SteamID64(),.2,0,function()
+				--removes the timer if swep is gone or player not looking at something anymore
+				if ((not IsValid(self)) or (not self:GetNWBool("firing"))) then
+					timer.Remove("sawStuff"..ply:SteamID64())
+					return
+				end
+				local trace = ply:GetEyeTrace()
+				if (not ((trace.HitPos-trace.StartPos):Length() < 90)) then
+					return
+				end
+
+				local ent = trace.Entity
+				local phys = ent:GetPhysicsObject()
+				if IsValid(phys) then
+					phys:ApplyForceOffset(ply:GetAimVector()*240*self:GetNWFloat("spinSpeed"),trace.HitPos)
+				end
+
+				ent:TakeDamage(math.random(2,12),ply,self)
+
+				local effect = EffectData()
+				effect:SetOrigin(trace.HitPos)
+				effect:SetNormal(trace.HitNormal)
+
+				if ((ent:IsNPC() or ent:IsRagdoll()) or ent:IsPlayer()) then
+					self:EmitSound("npc/manhack/grind_flesh"..math.random(3)..".wav")
+					util.Effect("BloodImpact",effect)
+
+					--blood decals
+					util.Decal("Blood",trace.HitPos+trace.HitNormal,trace.HitPos-trace.HitNormal)
+					if (math.random(3) == 1) then
+						--decal on the floor
+						local trace2 = {}
+						trace2.start = trace.HitPos
+						trace2.endpos = trace.HitPos + Vector(0,0,-10000)
+						trace2.filter = ent
+						trace2 = util.TraceLine(trace2)
+						util.Decal("Blood",trace2.HitPos+trace2.HitNormal,trace2.HitPos-trace2.HitNormal,ent)
 					end
-					local trace = ply:GetEyeTrace()
-					if (not ((trace.HitPos-trace.StartPos):Length() < 90)) then
-						timer.Remove("sawStuff"..ply:SteamID64())
-						return
-					end
-
-					--still focused on an entity
-					local ent = trace.Entity
-					local phys = ent:GetPhysicsObject()
-					if IsValid(phys) then
-						phys:ApplyForceOffset(ply:GetAimVector()*240*self:GetNWFloat("spinSpeed"),trace.HitPos)
-					end
-
-					ent:TakeDamage(math.random(2,12),ply)
-
-					local effect = EffectData()
-					effect:SetOrigin(trace.HitPos)
-					effect:SetNormal(trace.HitNormal)
-
-					if (ent:IsNPC() or ent:IsRagdoll()) then
-						self:EmitSound("npc/manhack/grind_flesh"..math.random(3)..".wav")
-						util.Effect("BloodImpact",effect)
-
-						--blood decals
-						util.Decal("Blood",trace.HitPos+trace.HitNormal,trace.HitPos-trace.HitNormal)
-						if (math.random(3) == 1) then
-							--decal on the floor
-							local trace2 = {}
-							trace2.start = trace.HitPos
-							trace2.endpos = trace.HitPos + Vector(0,0,-10000)
-							trace2.filter = ent
-							trace2 = util.TraceLine(trace2)
-							util.Decal("Blood",trace2.HitPos+trace2.HitNormal,trace2.HitPos-trace2.HitNormal,ent)
-						end
-					else
-						self:EmitSound("npc/manhack/grind"..math.random(5)..".wav")
-						util.Effect("ManhackSparks",effect)
-					end
-				end)
-			end
+				else
+					self:EmitSound("npc/manhack/grind"..math.random(5)..".wav")
+					util.Effect("ManhackSparks",effect)
+				end
+			end)
 		end
 	end
 end
+
+hook.Add("Initialize","hhsawIcons",function()
+	if SERVER then return end
+	killicon.Add("ffv_hhsaw","HUD/killicons/ffv_hhsaw.png")
+end)
 
 --i love swep construction kit!!!! thanks clavus creator of swep construction kit
 --weapon info
@@ -361,6 +359,8 @@ if CLIENT then
 
 	SWEP.wRenderOrder = nil
 	function SWEP:DrawWorldModel()
+
+		self.WElements.saw.angle = self.WElements.saw.angle + Angle(-self:GetNWFloat("spinSpeed"),0,0)
 		
 		if (self.ShowWorldModel == nil or self.ShowWorldModel) then
 			self:DrawModel()
