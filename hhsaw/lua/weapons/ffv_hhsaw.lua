@@ -23,17 +23,12 @@ end
 
 function SWEP:SecondaryAttack() end
 function SWEP:PrimaryAttack()
-	if (not self:GetNWBool("firing")) then self:EmitSound("ambient/machines/spinup.wav") end
 	self.timeShot = CurTime()
-	if CLIENT then return end
-
 	self:SetNWBool("firing",true)
 end
 
 function SWEP:Think()
 	local ply = self:GetOwner()
-	if (((CurTime()-self.timeShot)>0.02) and self:GetNWBool("firing")) then self:EmitSound("ambient/machines/spindown.wav") end
-
 	--spinny blade wm
 	if CLIENT then
 		--hold pos
@@ -64,15 +59,17 @@ function SWEP:Think()
 
 	if ((CurTime()-self.timeShot)>0.02) then
 		--not firing
+		if self:GetNWBool("firing") then self:EmitSound("ambient/machines/spindown.wav") end
 		self:SetNWBool("firing",false)
 		self:SetNWFloat("spinSpeed",to_goal(self:GetNWFloat("spinSpeed"),0,.02))
 	else
 		--is firing
 		self:SetNWFloat("spinSpeed",to_goal(self:GetNWFloat("spinSpeed"),8,.06))
 
-		--start sound
+		--start sounds
 		if (self.spinSound == 0) then
-			self.spinSound = self:StartLoopingSound("ambient/machines/spin_loop.wav")
+			self:EmitSound("ambient/machines/spinup.wav")
+			self.spinSound = self:StartLoopingSound("vehicles/airboat/fan_blade_fullthrottle_loop1.wav")
 		end
 
 		--stuff timer
@@ -84,7 +81,7 @@ function SWEP:Think()
 					return
 				end
 				local trace = ply:GetEyeTrace()
-				if (not ((trace.HitPos-trace.StartPos):Length() < 90)) then
+				if (not ((trace.HitPos-trace.StartPos):Length() < 140)) then
 					return
 				end
 

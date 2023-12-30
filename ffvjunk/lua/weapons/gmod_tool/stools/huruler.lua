@@ -29,7 +29,6 @@ function TOOL:LeftClick(trace)
 end
 
 function TOOL:Think()
-	--this is really bad! if youre looking through my code to see how you should do stuff dont do this! i couldnt read the convar in the rendering hook for some reason and i dont know why so i did this. this is why it is in the junk collection addon
 	local ply = self:GetOwner()
 	ply:SetNWBool("hurx",self:GetClientBool("limitx"))
 	ply:SetNWBool("hury",self:GetClientBool("limity"))

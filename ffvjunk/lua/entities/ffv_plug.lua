@@ -9,6 +9,7 @@ ENT.Category = "ffvjunk"
 ENT.Instructions = "Goes with socket"
 
 ENT.plugged = false
+ENT.socketWeld = nil
 
 function ENT:Initialize()
 	if CLIENT then return end
@@ -17,4 +18,5 @@ function ENT:Initialize()
 	self:SetMoveType(MOVETYPE_VPHYSICS)
 	self:SetSolid(SOLID_VPHYSICS)
 	self:GetPhysicsObject():Wake()
+	self:GetPhysicsObject():SetMass(0)
 end
