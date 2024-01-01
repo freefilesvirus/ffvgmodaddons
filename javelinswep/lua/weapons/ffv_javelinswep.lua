@@ -1,5 +1,7 @@
 SWEP.Category = "Other"
-SWEP.PrintName = "Javelin"
+--SWEP.PrintName = "Javelin"
+--many people wanted it to be renamed to harpoon... file names are staying the same though
+SWEP.PrintName = "Harpoon"
 SWEP.Spawnable = true
 SWEP.DrawAmmo = true
 SWEP.Slot = 1
@@ -55,8 +57,8 @@ hook.Add("Initialize", "javelinAmmo", function()
 		CreateConVar("jav_weldforcelimit",0)
 		return
 	end
-	language.Add("javelin_ammo", "Javelins")
-	language.Add("ffv_javelin", "Javelin")
+	language.Add("javelin_ammo", "Harpoons")
+	language.Add("ffv_javelin", "Harpoon")
 end)
 
 --swep construction kit stuff. thanks clavus!
