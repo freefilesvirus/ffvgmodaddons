@@ -61,7 +61,7 @@ function SWEP:Think()
 		--not firing
 		if self:GetNWBool("firing") then self:EmitSound("ambient/machines/spindown.wav") end
 		self:SetNWBool("firing",false)
-		self:SetNWFloat("spinSpeed",to_goal(self:GetNWFloat("spinSpeed"),0,.02))
+		self:SetNWFloat("spinSpeed",to_goal(self:GetNWFloat("spinSpeed"),0,.04))
 	else
 		--is firing
 		self:SetNWFloat("spinSpeed",to_goal(self:GetNWFloat("spinSpeed"),8,.06))
@@ -74,7 +74,7 @@ function SWEP:Think()
 
 		--stuff timer
 		if (not timer.Exists("sawStuff"..ply:SteamID64())) then
-			timer.Create("sawStuff"..ply:SteamID64(),.2,0,function()
+			timer.Create("sawStuff"..ply:SteamID64(),.1,0,function()
 				--removes the timer if swep is gone or player not looking at something anymore
 				if ((not IsValid(self)) or (not self:GetNWBool("firing"))) then
 					timer.Remove("sawStuff"..ply:SteamID64())
@@ -91,7 +91,7 @@ function SWEP:Think()
 					phys:ApplyForceOffset(ply:GetAimVector()*240*self:GetNWFloat("spinSpeed"),trace.HitPos)
 				end
 
-				ent:TakeDamage(math.random(2,12),ply,self)
+				ent:TakeDamage(math.random(1,6),ply,self)
 
 				local effect = EffectData()
 				effect:SetOrigin(trace.HitPos)
