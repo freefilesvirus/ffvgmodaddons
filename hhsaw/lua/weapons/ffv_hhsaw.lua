@@ -10,9 +10,12 @@ SWEP.Secondary.Ammo = ""
 SWEP.Primary.Automatic = true
 SWEP.Secondary.Automatic = true
 
-SWEP.spinSound = 0
+SWEP.spinSound = nil
 SWEP.timeShot = 0
 SWEP.animPlace = 0
+
+SWEP.saw = true
+SWEP.fire = 0
 
 function to_goal(num,goal,change)
 	return math.Clamp(goal,num-change,num+change)
@@ -21,10 +24,43 @@ function place_between(goal,num1,num2)
 	return ((num2-num1)/goal)+num1
 end
 
-function SWEP:SecondaryAttack() end
 function SWEP:PrimaryAttack()
 	self.timeShot = CurTime()
 	self:SetNWBool("firing",true)
+end
+function SWEP:SecondaryAttack()
+	if (not self.saw) then return end
+	--spawn saw
+	local ply = self:GetOwner()
+	local saw = ents.Create("ffv_hhsawent")
+	saw:Spawn()
+	saw.ply = ply
+	local phys = saw:GetPhysicsObject()
+	local trace = ({
+		start=ply:GetShootPos(),
+		endpos=ply:GetShootPos()+ply:GetAimVector()*90,
+		filter=ply
+	})
+	saw:SetPos(util.TraceLine(trace).HitPos-(ply:GetAimVector()*10))
+	saw:SetAngles(ply:EyeAngles()+Angle(0,0,100))
+	phys:SetAngleVelocity(Vector(0,0,-self:GetNWFloat("spinSpeed")*200))
+	phys:SetVelocity(ply:GetAimVector()*self:GetNWFloat("spinSpeed")*100)
+
+	self:EmitSound("weapons/physcannon/superphys_launch4.wav")
+	self:ShootEffects()
+	self.spinSound:Stop()
+	self:SetNWFloat("spinSpeed",0)
+	self.saw = false
+	self.fire = CurTime()
+	self:SetNWBool("saw",false)
+end
+function SWEP:get_saw()
+	if ((CurTime()-self.fire)<1) then return false end
+	self.spinSound:PlayEx(0,100)
+	self:SetNWFloat("spinSpeed",0)
+	self.saw = true
+	self:SetNWBool("saw",true)
+	return true
 end
 
 function SWEP:Think()
@@ -48,35 +84,34 @@ function SWEP:Think()
 		local goal = 0
 		if self:GetNWBool("firing") then goal = 8 end
 		self.VElements.saw.angle = self.VElements.saw.angle + Angle(-self:GetNWFloat("spinSpeed"),0,0)
+		--shoving this here since secondary attack is predicted
+		if (not self:GetNWBool("saw")) then
+			self.VElements.saw.size = Vector(.01,.01,.01)
+		else
+			self.VElements.saw.size = Vector(.5,.5,.5)
+		end
 		return
 	end
 
-	--stop sound
-	if ((not (self.spinSound == 0)) and (not self:GetNWBool("firing"))) then
-		self:StopLoopingSound(self.spinSound)
-		self.spinSound = 0
-	end
+	--spinsound volume
+	self.spinSound:ChangeVolume(self:GetNWFloat("spinSpeed")/8)
 
 	if ((CurTime()-self.timeShot)>0.02) then
 		--not firing
-		if self:GetNWBool("firing") then self:EmitSound("ambient/machines/spindown.wav") end
 		self:SetNWBool("firing",false)
-		self:SetNWFloat("spinSpeed",to_goal(self:GetNWFloat("spinSpeed"),0,.04))
+		self:SetNWFloat("spinSpeed",to_goal(self:GetNWFloat("spinSpeed"),0,.02))
 	else
 		--is firing
 		self:SetNWFloat("spinSpeed",to_goal(self:GetNWFloat("spinSpeed"),8,.06))
 
-		--start sounds
-		if (self.spinSound == 0) then
-			self:EmitSound("ambient/machines/spinup.wav")
-			self.spinSound = self:StartLoopingSound("vehicles/airboat/fan_blade_fullthrottle_loop1.wav")
-		end
-
+		--if saw gone STOP !
+		if (not self.saw) then return end
+		
 		--stuff timer
 		if (not timer.Exists("sawStuff"..ply:SteamID64())) then
 			timer.Create("sawStuff"..ply:SteamID64(),.1,0,function()
 				--removes the timer if swep is gone or player not looking at something anymore
-				if ((not IsValid(self)) or (not self:GetNWBool("firing"))) then
+				if (((not IsValid(self)) or (not self:GetNWBool("firing"))) or (not self:GetNWBool("saw"))) then
 					timer.Remove("sawStuff"..ply:SteamID64())
 					return
 				end
@@ -121,12 +156,11 @@ function SWEP:Think()
 	end
 end
 
-hook.Add("Initialize","hhsawIcons",function()
-	if SERVER then return end
-	killicon.Add("ffv_hhsaw","HUD/killicons/ffv_hhsaw.png")
-end)
+function SWEP:Deploy()
+	self.spinSound:PlayEx(0,100)
+end
 
---i love swep construction kit!!!! thanks clavus creator of swep construction kit
+--thanks clavus creator of swep construction kit for making swep construction kit
 --weapon info
 SWEP.ViewModelFOV = 62.51256281407
 SWEP.ViewModelFlip = false
@@ -187,9 +221,11 @@ end
 
 function SWEP:Initialize()
 
+	self.spinSound = CreateSound(self,"vehicles/airboat/fan_blade_fullthrottle_loop1.wav")
 	self:SetHoldType("physgun")
 	--god i love predicted hooks!!
 	self:SetNWBool("firing",false)
+	self:SetNWFloat("saw",true)
 	self:SetNWFloat("spinSpeed",0)
 
 	if CLIENT then
@@ -228,7 +264,7 @@ end
 function SWEP:Holster()
 
 	self:SetNWFloat("spinSpeed",0)
-	self:StopLoopingSound(self.spinSound)
+	self.spinSound:Stop()
 	
 	if CLIENT and IsValid(self.Owner) then
 		local vm = self.Owner:GetViewModel()
@@ -358,6 +394,11 @@ if CLIENT then
 	function SWEP:DrawWorldModel()
 
 		self.WElements.saw.angle = self.WElements.saw.angle + Angle(-self:GetNWFloat("spinSpeed"),0,0)
+		if (not self:GetNWBool("saw")) then
+			self.WElements.saw.size = Vector(.01,.01,.01)
+		else
+			self.WElements.saw.size = Vector(.5,.5,.5)
+		end
 		
 		if (self.ShowWorldModel == nil or self.ShowWorldModel) then
 			self:DrawModel()
