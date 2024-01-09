@@ -29,6 +29,7 @@ function SWEP:PrimaryAttack()
 	self:SetNWBool("firing",true)
 end
 function SWEP:SecondaryAttack()
+	if CLIENT then return end
 	if (not self.saw) then return end
 	--spawn saw
 	local ply = self:GetOwner()
