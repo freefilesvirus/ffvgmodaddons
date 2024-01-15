@@ -293,8 +293,6 @@ function ENT:OnRemove()
 	for k,v in pairs(self.sounds) do v:Stop() end
 	for k,v in ipairs(player.GetAll()) do
 		if (v:GetViewEntity()==self.parts[6]) then v:SetViewEntity(v) end
-		--v:ConCommand("jpeg")
-		--v:SetViewEntity(v)
 	end
 end
 
@@ -328,7 +326,7 @@ end
 
 function ENT:getInterest(ent)
 	if ent:IsPlayer() then return 6 end
-	if (ent:GetClass()=="ffv_watchbot") then return 5 end
+	if (string.StartsWith(ent:GetClass(),"ffv_") and string.EndsWith(ent:GetClass(),"bot")) then return 5 end
 	if ent:IsNPC() then return 3 end
 	if ent:IsRagdoll() then return 3 end
 	if ent:IsVehicle() then return 2 end
@@ -395,18 +393,17 @@ list.Set("NPC","ffv_watchbot",{
 drive.Register("drive_ffvrobot",
 {
 	StartMove = function( self, mv, cmd )
-		if ( mv:KeyReleased( IN_USE ) ) then
-			self:Stop()
-		end
+		if ( mv:KeyReleased( IN_USE ) ) then self:Stop() end
 		if (mv:KeyReleased(IN_ATTACK) and SERVER) then self.Entity.bot:screenshot() end
 	end,
-	Init = function() return end,
-	SetupControls = function() return end,
-	Move = function() return end,
-	FinishMove = function() return end,
-	CalcView = function() return end,
+	Init = function(self) self.Player:ConCommand("cl_drawhud 0") end,
+	SetupControls = function() end,
+	Move = function() end,
+	FinishMove = function() end,
+	CalcView = function() end,
 	Stop = function( self )
 		self.StopDriving = true
+		self.Player:ConCommand("cl_drawhud 1")
 	end
 })
 
@@ -417,7 +414,7 @@ properties.Add( "watchffvrobot", {
 
 	Filter = function( self, ent, ply )
 
-		if (not (ent:GetClass()=="ffv_watchbot")) then return false end
+		if (not (string.StartsWith(ent:GetClass(),"ffv_") and string.EndsWith(ent:GetClass(),"bot"))) then return false end
 
 		-- Make sure nobody else is driving this or we can get into really invalid states
 		for id, pl in ipairs( player.GetAll() ) do
@@ -441,9 +438,9 @@ properties.Add( "watchffvrobot", {
 		local ent = net.ReadEntity()
 		if ( !properties.CanBeTargeted( ent, ply ) ) then return end
 		if ( !self:Filter( ent, ply ) ) then return end
-		if (not IsValid(ent.parts[6])) then return end
+		if (not (ent.parts[#ent.parts]:GetClass()=="env_projectedtexture")) then return end
 
-		drive.PlayerStartDriving( ply, ent.parts[6], "drive_ffvrobot" )
+		drive.PlayerStartDriving( ply, ent.parts[#ent.parts], "drive_ffvrobot" )
 
 	end
 
