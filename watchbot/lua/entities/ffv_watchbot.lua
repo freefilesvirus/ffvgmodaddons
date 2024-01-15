@@ -152,8 +152,8 @@ function ENT:Think()
 			targetPos = self.target:GetShootPos()-Vector(0,0,20)
 		elseif (self.target:IsNPC() or self.target:IsNextBot()) then
 			targetPos = self.target:WorldSpaceCenter()
-		elseif (self.target:GetClass()=="ffv_watchbot") then
-			targetPos = self.target.parts[3]:GetPos()
+		elseif (string.StartsWith(self.target:GetClass(),"ffv_") and string.EndsWith(self.target:GetClass(),"bot")) then
+			targetPos = self.target.parts[#self.target.parts]:GetPos()
 		else
 			targetPos = self.target:GetPos()
 		end
@@ -357,7 +357,7 @@ function ENT:screenshot()
 
 	light:Input("TurnOn",nil,nil,true)
 	for k,v in ipairs(player.GetAll()) do
-		if (v:GetViewEntity()==self.parts[6]) then v:ConCommand("jpeg") end
+		if (v:GetViewEntity()==light) then v:ConCommand("jpeg") end
 	end
 
 	light:Input("TurnOff",nil,nil,true)
@@ -396,14 +396,13 @@ drive.Register("drive_ffvrobot",
 		if ( mv:KeyReleased( IN_USE ) ) then self:Stop() end
 		if (mv:KeyReleased(IN_ATTACK) and SERVER) then self.Entity.bot:screenshot() end
 	end,
-	Init = function(self) self.Player:ConCommand("cl_drawhud 0") end,
+	Init = function(self) end,
 	SetupControls = function() end,
 	Move = function() end,
 	FinishMove = function() end,
 	CalcView = function() end,
 	Stop = function( self )
 		self.StopDriving = true
-		self.Player:ConCommand("cl_drawhud 1")
 	end
 })
 
