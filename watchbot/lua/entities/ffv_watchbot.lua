@@ -278,6 +278,7 @@ function ENT:Initialize()
 	light:SetLocalAngles(Angle(0,0,0))
 	light.bot = self
 	table.insert(self.parts,light)
+	--sounds
 	for k=1,2 do
 		local sound = CreateSound(self,"ratchetloop.wav")
 		sound:PlayEx(0,100)
@@ -292,7 +293,10 @@ function ENT:OnRemove()
 	for k,v in pairs(self.parts) do v:Remove() end
 	for k,v in pairs(self.sounds) do v:Stop() end
 	for k,v in ipairs(player.GetAll()) do
-		if (v:GetViewEntity()==self.parts[6]) then v:SetViewEntity(v) end
+		if (v:GetViewEntity()==self.parts[6]) then
+			v:SetViewEntity(v)
+			v:SetFOV(0)
+		end
 	end
 end
 
@@ -390,35 +394,33 @@ list.Set("NPC","ffv_watchbot",{
 	Category = "Robots"
 })
 
+--context watch stuff, not specific to watchbot
+
 drive.Register("drive_ffvrobot",
 {
 	StartMove = function( self, mv, cmd )
 		if ( mv:KeyReleased( IN_USE ) ) then self:Stop() end
 		if (mv:KeyReleased(IN_ATTACK) and SERVER) then self.Entity.bot:screenshot() end
 	end,
-	Init = function(self) end,
+	Init = function(self) self.Player:SetFOV(150) end,
 	SetupControls = function() end,
 	Move = function() end,
 	FinishMove = function() end,
 	CalcView = function() end,
 	Stop = function( self )
 		self.StopDriving = true
+		self.Player:SetFOV(0)
 	end
 })
 
 properties.Add( "watchffvrobot", {
 	MenuLabel = "Watch",
 	Order = 1100,
-	MenuIcon = "materials/robotwatch.png",
+	MenuIcon = "materials/ffvrobots/robotwatch.png",
 
 	Filter = function( self, ent, ply )
 
 		if (not (string.StartsWith(ent:GetClass(),"ffv_") and string.EndsWith(ent:GetClass(),"bot"))) then return false end
-
-		-- Make sure nobody else is driving this or we can get into really invalid states
-		for id, pl in ipairs( player.GetAll() ) do
-			if ( pl:GetDrivingEntity() == ent ) then return false end
-		end
 
 		return true
 
@@ -444,6 +446,19 @@ properties.Add( "watchffvrobot", {
 	end
 
 } )
+
+local robotWatchMat = Material("materials/ffvrobots/overlay.png")
+hook.Add("PostDrawHUD","ffvrobotWatch",function()
+	local ply = LocalPlayer()
+	local viewEnt = ply:GetViewEntity()
+	if (not (viewEnt:GetClass()=="class C_EnvProjectedTexture")) then return end
+	if (not (viewEnt:GetParent():GetModel()=="models/props_wasteland/light_spotlight01_lamp.mdl")) then return end
+	cam.Start2D()
+		surface.SetDrawColor(255,255,255,255)
+		surface.SetMaterial(robotWatchMat)
+		surface.DrawTexturedRect(0,0,ScrW(),ScrH())
+	cam.End2D()
+end)
 
 if SERVER then
 	duplicator.RegisterEntityClass("ffv_watchbot",function(ply,data)
