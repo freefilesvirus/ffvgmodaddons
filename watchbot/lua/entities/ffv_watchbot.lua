@@ -52,13 +52,7 @@ function ENT:Think()
 				self.target:Remove()
 				self.target = barrel
 				--screenshot
-				self:EmitSound("npc/scanner/scanner_photo1.wav")
-				local light = self.parts[6]
-				light:Input("TurnOff",nil,nil,true)
-				timer.Simple(0.2,function()
-					if (not IsValid(light)) then return end
-					light:Input("TurnOn",nil,nil,true)
-				end)
+				self:screenshot()
 			end
 		end
 		--target stuff
@@ -216,15 +210,7 @@ function ENT:Think()
 		if (self:GetPos():DistToSqr(self.goalPos)<10000) then
 			self.goalPos = false
 			--chance to screenshot
-			if randomChance(20) then
-				self:EmitSound("npc/scanner/scanner_photo1.wav")
-				local light = self.parts[6]
-				light:Input("TurnOff",nil,nil,true)
-				timer.Simple(0.2,function()
-					if (not IsValid(light)) then return end
-					light:Input("TurnOn",nil,nil,true)
-				end)
-			end
+			if randomChance(20) then self:screenshot() end
 		else
 			local nextPos = self.goalPos
 			--see if theres pathfinding to do
@@ -288,8 +274,9 @@ function ENT:Initialize()
 	light:SetKeyValue("lightfov",40)
 	light:SetKeyValue("lightcolor",Format("255 255 255 255",10000))
 	light:Input("SpotlightTexture",nil,nil,"effects/flashlight001")
-	light:SetLocalPos(Vector(4,0,0))
+	light:SetLocalPos(Vector(4,0,4))
 	light:SetLocalAngles(Angle(0,0,0))
+	light.bot = self
 	table.insert(self.parts,light)
 	for k=1,2 do
 		local sound = CreateSound(self,"ratchetloop.wav")
@@ -304,6 +291,11 @@ end
 function ENT:OnRemove()
 	for k,v in pairs(self.parts) do v:Remove() end
 	for k,v in pairs(self.sounds) do v:Stop() end
+	for k,v in ipairs(player.GetAll()) do
+		if (v:GetViewEntity()==self.parts[6]) then v:SetViewEntity(v) end
+		--v:ConCommand("jpeg")
+		--v:SetViewEntity(v)
+	end
 end
 
 function ENT:OnTakeDamage(info)
@@ -361,6 +353,22 @@ function ENT:qualifyLook(ent)
 	return false
 end
 
+function ENT:screenshot()
+	self:EmitSound("npc/scanner/scanner_photo1.wav")
+	local light = self.parts[6]
+
+	light:Input("TurnOn",nil,nil,true)
+	for k,v in ipairs(player.GetAll()) do
+		if (v:GetViewEntity()==self.parts[6]) then v:ConCommand("jpeg") end
+	end
+
+	light:Input("TurnOff",nil,nil,true)
+	timer.Simple(0.2,function()
+		if (not IsValid(light)) then return end
+		light:Input("TurnOn",nil,nil,true)
+	end)
+end
+
 function randomChance(chance)
 	if (math.random(chance)==1) then return true end
 	return false
@@ -383,3 +391,66 @@ list.Set("NPC","ffv_watchbot",{
 	Class = "ffv_watchbot",
 	Category = "Robots"
 })
+
+drive.Register("drive_ffvrobot",
+{
+	StartMove = function( self, mv, cmd )
+		if ( mv:KeyReleased( IN_USE ) ) then
+			self:Stop()
+		end
+		if (mv:KeyReleased(IN_ATTACK) and SERVER) then self.Entity.bot:screenshot() end
+	end,
+	Init = function() return end,
+	SetupControls = function() return end,
+	Move = function() return end,
+	FinishMove = function() return end,
+	CalcView = function() return end,
+	Stop = function( self )
+		self.StopDriving = true
+	end
+})
+
+properties.Add( "watchffvrobot", {
+	MenuLabel = "Watch",
+	Order = 1100,
+	MenuIcon = "materials/robotwatch.png",
+
+	Filter = function( self, ent, ply )
+
+		if (not (ent:GetClass()=="ffv_watchbot")) then return false end
+
+		-- Make sure nobody else is driving this or we can get into really invalid states
+		for id, pl in ipairs( player.GetAll() ) do
+			if ( pl:GetDrivingEntity() == ent ) then return false end
+		end
+
+		return true
+
+	end,
+
+	Action = function( self, ent )
+
+		self:MsgStart()
+			net.WriteEntity( ent )
+		self:MsgEnd()
+
+	end,
+
+	Receive = function( self, length, ply )
+
+		local ent = net.ReadEntity()
+		if ( !properties.CanBeTargeted( ent, ply ) ) then return end
+		if ( !self:Filter( ent, ply ) ) then return end
+		if (not IsValid(ent.parts[6])) then return end
+
+		drive.PlayerStartDriving( ply, ent.parts[6], "drive_ffvrobot" )
+
+	end
+
+} )
+
+if SERVER then
+	duplicator.RegisterEntityClass("ffv_watchbot",function(ply,data)
+		return
+	end,nil)
+end
