@@ -7,6 +7,7 @@ ENT.Base = "base_gmodentity"
 ENT.Spawnable = true
 
 ENT.parts = {}
+ENT.sounds = {}
 ENT.lastThink = 0
 ENT.target = nil
 
@@ -178,9 +179,17 @@ function ENT:Think()
 	targetPos = targetPos+((self.lookVar/100)*(self:GetPos():Distance(targetPos)))
 	local angoal = (targetPos-(latGear:GetPos())):Angle()
 	local latDif = math.AngleDifference(latGear:GetAngles().y,angoal.y)
+	local latSound = self.sounds[1]
 	local longDif = math.AngleDifference(longGear:GetAngles().x,angoal.x)
-	if self.grounded then latGear:SetLocalAngles(latGear:GetLocalAngles()-Angle(0,latDif/8,0)) end
+	local longSound = self.sounds[2]
+	if self.grounded then
+		local preMove = latGear:GetLocalAngles()
+		latGear:SetLocalAngles(latGear:GetLocalAngles()-Angle(0,latDif/8,0))
+		latSound:ChangeVolume(math.Clamp(math.abs((preMove-latGear:GetLocalAngles()).y),0,1))
+	end
+	local preMove = longGear:GetLocalAngles()
 	longGear:SetLocalAngles(longGear:GetLocalAngles()-Angle(longDif/8,0,0))
+	longSound:ChangeVolume(math.Clamp(math.abs((preMove-longGear:GetLocalAngles()).x),0,1))
 
 	--abort here if disable ai thinking is on
 	if (cvars.Number("ai_disabled")==1) then
@@ -282,12 +291,19 @@ function ENT:Initialize()
 	light:SetLocalPos(Vector(4,0,0))
 	light:SetLocalAngles(Angle(0,0,0))
 	table.insert(self.parts,light)
+	for k=1,2 do
+		local sound = CreateSound(self,"ratchetloop.wav")
+		sound:PlayEx(0,100)
+		table.insert(self.sounds,sound)
+	end
+	local sound = CreateSound(self,"vehicles/diesel_loop2.wav")
+	sound:PlayEx(.6,180)
+	table.insert(self.sounds,sound)
 end
 
 function ENT:OnRemove()
-	for k,v in pairs(self.parts) do
-		v:Remove()
-	end
+	for k,v in pairs(self.parts) do v:Remove() end
+	for k,v in pairs(self.sounds) do v:Stop() end
 end
 
 function ENT:OnTakeDamage(info)
