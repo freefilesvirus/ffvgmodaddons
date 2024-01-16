@@ -378,8 +378,8 @@ net.Receive("watchbotPicture",function()
 			h=180,
 			format=png
 		})
-		if (not file.Exists("data/franklin","GAME")) then file.CreateDir("franklin") end
-		file.Write("franklin/"..filename..".png",texture)
+		if (not file.Exists("data/observationbot","GAME")) then file.CreateDir("observationbot") end
+		file.Write("observationbot/"..filename..".png",texture)
 	cam.End2D()
 end)
 
