@@ -49,16 +49,33 @@ function ENT:OnRemove()
 	self:extraRemove()
 end
 
-function ENT:addPart(model,pos,ang)
+function ENT:addPart(model,pos,ang,scale)
+	if (scale==nil) then scale = 1 end
 	local part = ents.Create("prop_dynamic")
 	part:SetModel(model)
 	pos:Rotate(self:GetAngles())
 	part:SetPos(self:GetPos()+pos)
 	part:SetAngles(self:GetAngles()+ang)
+	part:SetModelScale(scale)
 	part:SetParent(self)
 	table.insert(self.parts,part)
 
 	return part
+end
+
+function ENT:makeLight(lamp)
+	local light = ents.Create("env_projectedtexture")
+	light:Spawn()
+	light:SetParent(lamp)
+	light:SetKeyValue("enableshadows",1)
+	light:SetKeyValue("lightfov",70)
+	light:SetKeyValue("lightcolor",Format("255 255 255 255",10000))
+	light:Input("SpotlightTexture",nil,nil,"effects/flashlight001")
+	light:SetLocalPos(Vector(4,0,4))
+	light:SetLocalAngles(Angle(0,0,0))
+	light.bot = self
+	table.insert(self.parts,light)
+	return light
 end
 
 --override these

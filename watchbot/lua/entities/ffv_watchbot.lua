@@ -242,17 +242,7 @@ function ENT:Initialize()
 	longGear:SetParent(latGear)
 	local lamp = self:addPart("models/props_wasteland/light_spotlight01_lamp.mdl",Vector(10,0,56),Angle(0,0,0))
 	lamp:SetParent(longGear)
-	local light = ents.Create("env_projectedtexture")
-	light:Spawn()
-	light:SetParent(lamp)
-	light:SetKeyValue("enableshadows",1)
-	light:SetKeyValue("lightfov",40)
-	light:SetKeyValue("lightcolor",Format("255 255 255 255",10000))
-	light:Input("SpotlightTexture",nil,nil,"effects/flashlight001")
-	light:SetLocalPos(Vector(4,0,4))
-	light:SetLocalAngles(Angle(0,0,0))
-	light.bot = self
-	table.insert(self.parts,light)
+	self:makeLight(lamp)
 	--sounds
 	for k=1,2 do
 		local sound = CreateSound(self,"ratchetloop.wav")
@@ -260,7 +250,7 @@ function ENT:Initialize()
 		table.insert(self.sounds,sound)
 	end
 	local sound = CreateSound(self,"vehicles/diesel_loop2.wav")
-	sound:PlayEx(1,180)
+	sound:PlayEx(.6,180)
 	table.insert(self.sounds,sound)
 end
 
@@ -347,10 +337,15 @@ function ENT:screenshot()
 	cam:SetLocalPos(Vector(0,0,0))
 	cam:SetLocalAngles(Angle(0,0,0))
 	cam:Activate()
+	--get players
+	local plys = {}
+	for k,v in ipairs(player.GetAll()) do
+		if (v:GetInfoNum("bot_savepictures",0)==1) then table.insert(plys,v) end
+	end
 	--tell client to save
 	net.Start("watchbotPicture")
 		net.WriteString(filename)
-	net.Broadcast()
+	net.Send(plys)
 
 	light:Input("TurnOff",nil,nil,true)
 	timer.Simple(0.2,function()
@@ -388,6 +383,8 @@ list.Set("NPC","ffv_watchbot",{
 	Class = "ffv_watchbot",
 	Category = "Robots"
 })
+
+CreateClientConVar("bot_savepictures","1",true,true)
 
 if CLIENT then language.Add("ffv_watchbot","Watching Bot") end
 if SERVER then
