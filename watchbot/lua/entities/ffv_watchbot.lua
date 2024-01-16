@@ -1,129 +1,78 @@
 AddCSLuaFile()
-AddCSLuaFile("wiki_astar.lua")
-include("wiki_astar.lua")
 
 ENT.Type = "anim"
-ENT.Base = "base_gmodentity"
+ENT.Base = "ffv_basebot"
+ENT.PrintName = "Observation Bot"
 ENT.Spawnable = true
-
-ENT.parts = {}
-ENT.sounds = {}
-ENT.lastThink = 0
-ENT.target = nil
 
 ENT.lookVar = Vector(0,0,0)
 ENT.lookVarSize = 1
 
 ENT.forward = 1
 ENT.goalAngle = false
-ENT.goalPos = false
 ENT.moveSpeed = 6.5
 
 ENT.grounded = false
 
-function ENT:Think()
-	if CLIENT then return end
-	if (IsValid(self.target) and (not self:qualifyLook(self.target))) then self.target = nil end
-	if ((CurTime()-self.lastThink)>1) then
-		--ticks every second
-		local size = self.lookVarSize
-		if randomChance(2) then self.lookVar:Random(-size,size) end
-		--checks if fell over
-		self.grounded = math.abs(self:GetAngles().z)<40
-		--no one looking shenanigans
-		local looking = false
-		for k,v in ipairs(player.GetAll()) do
-			local dif = (v:GetShootPos()-self:GetPos()):GetNormalized()
-			dif:Rotate(-v:EyeAngles())
-			if (v:Visible(self) and (dif.x+1<1)) then looking = true end
+function ENT:delayedThink()
+	local size = self.lookVarSize
+	if randomChance(2) then self.lookVar:Random(-size,size) end
+	--checks if fell over
+	self.grounded = math.abs(self:GetAngles().z)<40
+	--no one looking shenanigans
+	local looking = false
+	for k,v in ipairs(player.GetAll()) do
+		if lineOfSight(v,self) then looking = true end
+	end
+	if (not looking) then
+		--get up when no ones looking
+		if (not self.grounded) then
+			self:SetAngles(Angle(0,0,0))
 		end
-		if (not looking) then
-			--get up when no ones looking
-			if (not self.grounded) then
-				self:SetAngles(Angle(0,0,0))
-			end
-			--fratricide
-			if (IsValid(self.target) and ((self.target:GetClass()=="ffv_watchbot") and randomChance(2000))) then
-				local barrel = ents.Create("prop_physics")
-				barrel:SetModel("models/props_c17/oildrum001.mdl")
-				barrel:Spawn()
-				barrel:SetPos(self.target:GetPos())
-				barrel:SetAngles(self.target:GetAngles())
-				self.target:Remove()
-				self.target = barrel
-				--screenshot
-				self:screenshot()
+		--fratricide
+		if (IsValid(self.target) and ((self.target:GetClass()=="ffv_watchbot") and randomChance(2000))) then
+			local barrel = ents.Create("prop_physics")
+			barrel:SetModel("models/props_c17/oildrum001.mdl")
+			barrel:Spawn()
+			barrel:SetPos(self.target:GetPos())
+			barrel:SetAngles(self.target:GetAngles())
+			self.target:Remove()
+			self.target = barrel
+			--screenshot
+			self:screenshot()
+		end
+	end
+	--target stuff
+	if IsValid(self.target) then
+		--chance go to target
+		if randomChance(3) then self.goalPos = self.target:GetPos() end
+		--chance face target
+		if ((IsValid(self.target) and randomChance(6)) and ((not self.goalAngle) and (not self.goalPos))) then
+			local targetAngle = (self.target:GetPos()-self:GetPos()):Angle()
+			local angDif = math.AngleDifference(self:GetAngles().y,targetAngle.y)
+			if (not(((angDif>-10)and(angDif<10))or((angDif>170)or(angDif<-170)))) then
+				--target is not within 20 degrees of either directly in front of or behind him
+				self.goalAngle = targetAngle.y
 			end
 		end
-		--target stuff
-		if IsValid(self.target) then
-			--chance go to target
-			if randomChance(3) then self.goalPos = self.target:GetPos() end
-			--chance face target
-			if ((IsValid(self.target) and randomChance(6)) and ((not self.goalAngle) and (not self.goalPos))) then
-				local targetAngle = (self.target:GetPos()-self:GetPos()):Angle()
-				local angDif = math.AngleDifference(self:GetAngles().y,targetAngle.y)
-				if (not(((angDif>-10)and(angDif<10))or((angDif>170)or(angDif<-170)))) then
-					--target is not within 20 degrees of either directly in front of or behind him
-					self.goalAngle = targetAngle.y
-				end
+		--chance to switch target to what targets looking at
+		if (self.target:IsPlayer() or self.target:IsNPC()) then
+			local trace = util.TraceLine({
+				start=self.target:GetShootPos(),
+				endpos=self.target:GetShootPos()+self.target:GetAimVector()*9999,
+				filter=self.target
+			})
+			local changeChance = 1
+			--far higher chance to look at the thing if its being shot at
+			if (IsValid(self.target:GetActiveWeapon()) and ((CurTime()-self.target:GetActiveWeapon():LastShootTime())<.5)) then changeChance = 24 end
+			if (IsValid(trace.Entity) and (self:qualifyLook(trace.Entity)) and (weightedRandom({self:getInterest(self.target)*2,changeChance})==2)) then
+				self.target = trace.Entity
 			end
-			--chance to switch target to what targets looking at
-			if (self.target:IsPlayer() or self.target:IsNPC()) then
-				local trace = util.TraceLine({
-					start=self.target:GetShootPos(),
-					endpos=self.target:GetShootPos()+self.target:GetAimVector()*9999,
-					filter=self.target
-				})
-				local changeChance = 1
-				--far higher chance to look at the thing if its being shot at
-				if (IsValid(self.target:GetActiveWeapon()) and ((CurTime()-self.target:GetActiveWeapon():LastShootTime())<.5)) then changeChance = 24 end
-				if (IsValid(trace.Entity) and (self:qualifyLook(trace.Entity)) and (weightedRandom({self:getInterest(self.target)*2,changeChance})==2)) then
-					self.target = trace.Entity
-				end
-			end
-			--chance get bored
-			if (weightedRandom({self:getInterest(self.target)*6,1})==2) then
-				--chance to instantly look for something else
-				if randomChance(4) then
-					local candidates = {}
-					local chances = {}
-					local pos = self:GetPos()
-					for k,v in ipairs(ents.GetAll()) do
-						if ((self:Visible(v) and (pos:DistToSqr(v:GetPos())<422500)) and self:qualifyLook(v)) then
-							table.insert(candidates,v)
-							table.insert(chances,self:getInterest(v))
-						end
-					end
-					self.target = candidates[weightedRandom(chances)]
-				else
-					self.target = nil
-				end
-			end
-
-			if (self.target==nil) then return end
-			--looks to see if target is still visible
-			if (not self.parts[5]:Visible(self.target)) then
-				--either go searching for a new target or look for old one
-				if (weightedRandom({self:getInterest(self.target),6})==2) then
-					--go find target
-					self.goalPos = self.target:GetPos()
-				else
-					self.target = nil
-				end
-			end
-		else
-			--ramble the land
-			if (randomChance(3) and (not self.goalPos)) then
-				local trace = util.TraceLine({
-					start=self:GetPos(),
-					endpos=self:GetPos()+Vector(math.random(-300,300),math.random(-300,300),0),
-					filter=self
-				})
-				self.goalPos = trace.HitPos
-			end
-			--look for something interesting
-			if randomChance(10) then
+		end
+		--chance get bored
+		if (weightedRandom({self:getInterest(self.target)*6,1})==2) then
+			--chance to instantly look for something else
+			if randomChance(4) then
 				local candidates = {}
 				local chances = {}
 				local pos = self:GetPos()
@@ -134,13 +83,49 @@ function ENT:Think()
 					end
 				end
 				self.target = candidates[weightedRandom(chances)]
+			else
+				self.target = nil
 			end
 		end
 
-		self.lastThink = CurTime()
+		if (self.target==nil) then return end
+		--looks to see if target is still visible
+		if (not self.parts[5]:Visible(self.target)) then
+			--either go searching for a new target or look for old one
+			if (weightedRandom({self:getInterest(self.target),6})==2) then
+				--go find target
+				self.goalPos = self.target:GetPos()
+			else
+				self.target = nil
+			end
+		end
+	else
+		--ramble the land
+		if (randomChance(3) and (not self.goalPos)) then
+			local trace = util.TraceLine({
+				start=self:GetPos(),
+				endpos=self:GetPos()+Vector(math.random(-300,300),math.random(-300,300),0),
+				filter=self
+			})
+			self.goalPos = trace.HitPos
+		end
+		--look for something interesting
+		if randomChance(10) then
+			local candidates = {}
+			local chances = {}
+			local pos = self:GetPos()
+			for k,v in ipairs(ents.GetAll()) do
+				if ((self:Visible(v) and (pos:DistToSqr(v:GetPos())<422500)) and self:qualifyLook(v)) then
+					table.insert(candidates,v)
+					table.insert(chances,self:getInterest(v))
+				end
+			end
+			self.target = candidates[weightedRandom(chances)]
+		end
 	end
+end
 
-	--ticks every frame
+function ENT:tickThink()
 	if (not IsValid(self.target)) then self.target = nil end
 	--look stuff
 	local latGear = self.parts[3]
@@ -165,9 +150,7 @@ function ENT:Think()
 	end
 	if (not self.grounded) then
 		self.lookVarSize = 0
-		local vec = Vector(0,0,100)
-		vec:Rotate(self:GetAngles())
-		targetPos = latGear:GetPos()+vec
+		targetPos = latGear:GetPos()+(self:GetUp()*100)
 	end
 
 	targetPos = targetPos+((self.lookVar/100)*(self:GetPos():Distance(targetPos)))
@@ -205,37 +188,6 @@ function ENT:Think()
 		wheelR:SetLocalAngles(wheelR:GetLocalAngles()+Angle(0,0,angVel.z/40))
 	end
 
-	--movement stuff
-	if self.goalPos then
-		if (self:GetPos():DistToSqr(self.goalPos)<10000) then
-			self.goalPos = false
-			--chance to screenshot
-			if randomChance(20) then self:screenshot() end
-		else
-			local nextPos = self.goalPos
-			--see if theres pathfinding to do
-			local path = AstarVector(self:GetPos(),self.goalPos)
-			if istable(path) then
-				nextPos = path[#path-1]:GetCenter()
-			end
-			--face target area before moving
-			local targetAngle = (nextPos-self:GetPos()):Angle()
-			local angDif = math.AngleDifference(self:GetAngles().y,targetAngle.y)
-			if (math.AngleDifference(angDif+90,0)>0) then self.forward = 1 else self.forward = -1 end
-			if (not(((angDif>-10)and(angDif<10))or((angDif>170)or(angDif<-170)))) then
-				--not facing the right way
-				self.goalAngle = targetAngle.y
-			end
-			if (not self.goalAngle) then
-				--move when not turning
-				local phys = self:GetPhysicsObject()
-				if ((phys:GetVelocity()*Vector(1,1,0)):Length()<(self.moveSpeed*10)) then
-					phys:AddVelocity(((nextPos-self:GetPos()):GetNormalized()*self.moveSpeed)*Vector(1,1,0))
-					phys:AddAngleVelocity(Vector(0,self.moveSpeed*-6*self.forward),0)
-				end
-			end
-		end
-	end
 	--angle stuff
 	if self.goalAngle then
 		if (math.abs(math.AngleDifference(self.goalAngle,self:GetAngles().y))>90) then
@@ -250,9 +202,32 @@ function ENT:Think()
 		--within 10 degrees of the target angle
 		if ((math.abs(angDif))<2) then self.goalAngle = false end
 	end
+end
 
-	self:NextThink(CurTime())
-	return true
+function ENT:movement(pos)
+	if (not self.goalPos) then return end
+	if (self:GetPos():DistToSqr(self.goalPos)<10000) then
+		self.goalPos = false
+		--chance to screenshot
+		if randomChance(20) then self:screenshot() end
+	else
+		--face target area before moving
+		local targetAngle = (pos-self:GetPos()):Angle()
+		local angDif = math.AngleDifference(self:GetAngles().y,targetAngle.y)
+		if (math.AngleDifference(angDif+90,0)>0) then self.forward = 1 else self.forward = -1 end
+		if (not(((angDif>-10)and(angDif<10))or((angDif>170)or(angDif<-170)))) then
+			--not facing the right way
+			self.goalAngle = targetAngle.y
+		end
+		if (not self.goalAngle) then
+			--move when not turning
+			local phys = self:GetPhysicsObject()
+			if ((phys:GetVelocity()*Vector(1,1,0)):Length()<(self.moveSpeed*10)) then
+				phys:AddVelocity(((pos-self:GetPos()):GetNormalized()*self.moveSpeed)*Vector(1,1,0))
+				phys:AddAngleVelocity(Vector(0,self.moveSpeed*-6*self.forward),0)
+			end
+		end
+	end
 end
 
 function ENT:Initialize()
@@ -285,19 +260,8 @@ function ENT:Initialize()
 		table.insert(self.sounds,sound)
 	end
 	local sound = CreateSound(self,"vehicles/diesel_loop2.wav")
-	sound:PlayEx(.6,180)
+	sound:PlayEx(1,180)
 	table.insert(self.sounds,sound)
-end
-
-function ENT:OnRemove()
-	for k,v in pairs(self.parts) do v:Remove() end
-	for k,v in pairs(self.sounds) do v:Stop() end
-	for k,v in ipairs(player.GetAll()) do
-		if (v:GetViewEntity()==self.parts[6]) then
-			v:SetViewEntity(v)
-			v:SetFOV(0)
-		end
-	end
 end
 
 function ENT:OnTakeDamage(info)
@@ -316,21 +280,10 @@ function ENT:Use(activator)
 	self.target = activator
 end
 
-function ENT:addPart(model,pos,ang)
-	local part = ents.Create("prop_dynamic")
-	part:SetModel(model)
-	pos:Rotate(self:GetAngles())
-	part:SetPos(self:GetPos()+pos)
-	part:SetAngles(self:GetAngles()+ang)
-	part:SetParent(self)
-	table.insert(self.parts,part)
-
-	return part
-end
-
 function ENT:getInterest(ent)
 	if ent:IsPlayer() then return 6 end
 	if (string.StartsWith(ent:GetClass(),"ffv_") and string.EndsWith(ent:GetClass(),"bot")) then return 5 end
+	if (ent:GetClass()=="ffv_hoardmarker") then return 5 end
 	if ent:IsNPC() then return 3 end
 	if ent:IsRagdoll() then return 3 end
 	if ent:IsVehicle() then return 2 end
@@ -359,10 +312,45 @@ function ENT:screenshot()
 	self:EmitSound("npc/scanner/scanner_photo1.wav")
 	local light = self.parts[6]
 
-	light:Input("TurnOn",nil,nil,true)
-	for k,v in ipairs(player.GetAll()) do
-		if (v:GetViewEntity()==light) then v:ConCommand("jpeg") end
+	--create the name
+	local filename = os.time()
+	local mapname = string.Right(game.GetMap(),#game.GetMap()-#string.Split(game.GetMap(),"_")[1]-1)
+	if randomChance(2) then filename = filename.."."..mapname end
+	if self.target then
+		local name = "thing"
+		if (self.target:GetClass()=="ffv_watchbot") then name = "franklin" end
+		if (self.target:GetClass()=="ffv_hoardbot") then name = "thief" end
+		if self.target:IsPlayer() then
+			if randomChance(4) then name = "friend"
+			else name = self.target:GetName() end
+		end
+		if (self.target:GetClass()=="prop_physics") then
+			name = self.target:GetModel()
+			name = string.Split(name,"/")
+			name = name[#name]
+			name = string.Split(name,"0")[1]
+			name = string.Split(name,".")[1]
+		end
+		if (name=="thing") then
+			name = self.target:GetClass()
+			name = string.Split(name,"_")
+			name = name[#name]
+		end
+		if randomChance(2) then filename = filename.."."..name end
 	end
+	--rt camera
+	local cam = ents.Create("point_camera")
+	cam:SetKeyValue("GlobalOverride","1")
+	cam:SetKeyValue("FOV","150")
+	cam:Spawn()
+	cam:SetParent(light)
+	cam:SetLocalPos(Vector(0,0,0))
+	cam:SetLocalAngles(Angle(0,0,0))
+	cam:Activate()
+	--tell client to save
+	net.Start("watchbotPicture")
+		net.WriteString(filename)
+	net.Broadcast()
 
 	light:Input("TurnOff",nil,nil,true)
 	timer.Simple(0.2,function()
@@ -371,22 +359,29 @@ function ENT:screenshot()
 	end)
 end
 
-function randomChance(chance)
-	if (math.random(chance)==1) then return true end
-	return false
-end
+local overlay = Material("materials/ffvrobots/overlaysquare.png")
+net.Receive("watchbotPicture",function()
+	if SERVER then return end
 
-function weightedRandom(chances)
-	--table format: {chance,chance,chance}
-	--example {5,1} has a 5/6 chance of returning 1 and 1/6 chance of returning 2
-	local drawTable = {}
-	for k,v in pairs(chances) do
-		for i=1,v do
-			table.insert(drawTable,k)
-		end
-	end
-	return drawTable[math.random(#drawTable)]
-end
+	local filename = net.ReadString()
+
+	cam.Start2D()
+		surface.SetDrawColor(255,255,255,255)
+		surface.SetTexture(surface.GetTextureID("pp/rt"))
+		surface.DrawTexturedRect(0,0,300,300)
+		surface.SetMaterial(overlay)
+		surface.DrawTexturedRect(0,0,300,300)
+		local texture = render.Capture({
+			x=60,
+			y=60,
+			w=180,
+			h=180,
+			format=png
+		})
+		if (not file.Exists("data/franklin","GAME")) then file.CreateDir("franklin") end
+		file.Write("franklin/"..filename..".png",texture)
+	cam.End2D()
+end)
 
 list.Set("NPC","ffv_watchbot",{
 	Name = "Observation Bot",
@@ -394,74 +389,8 @@ list.Set("NPC","ffv_watchbot",{
 	Category = "Robots"
 })
 
---context watch stuff, not specific to watchbot
-
-drive.Register("drive_ffvrobot",
-{
-	StartMove = function( self, mv, cmd )
-		if ( mv:KeyReleased( IN_USE ) ) then self:Stop() end
-		if (mv:KeyReleased(IN_ATTACK) and SERVER) then self.Entity.bot:screenshot() end
-	end,
-	Init = function(self) self.Player:SetFOV(150) end,
-	SetupControls = function() end,
-	Move = function() end,
-	FinishMove = function() end,
-	CalcView = function() end,
-	Stop = function( self )
-		self.StopDriving = true
-		self.Player:SetFOV(0)
-	end
-})
-
-properties.Add( "watchffvrobot", {
-	MenuLabel = "Watch",
-	Order = 1100,
-	MenuIcon = "materials/ffvrobots/robotwatch.png",
-
-	Filter = function( self, ent, ply )
-
-		if (not (string.StartsWith(ent:GetClass(),"ffv_") and string.EndsWith(ent:GetClass(),"bot"))) then return false end
-
-		return true
-
-	end,
-
-	Action = function( self, ent )
-
-		self:MsgStart()
-			net.WriteEntity( ent )
-		self:MsgEnd()
-
-	end,
-
-	Receive = function( self, length, ply )
-
-		local ent = net.ReadEntity()
-		if ( !properties.CanBeTargeted( ent, ply ) ) then return end
-		if ( !self:Filter( ent, ply ) ) then return end
-		if (not (ent.parts[#ent.parts]:GetClass()=="env_projectedtexture")) then return end
-
-		drive.PlayerStartDriving( ply, ent.parts[#ent.parts], "drive_ffvrobot" )
-
-	end
-
-} )
-
-local robotWatchMat = Material("materials/ffvrobots/overlay.png")
-hook.Add("PostDrawHUD","ffvrobotWatch",function()
-	local ply = LocalPlayer()
-	local viewEnt = ply:GetViewEntity()
-	if (not (viewEnt:GetClass()=="class C_EnvProjectedTexture")) then return end
-	if (not (viewEnt:GetParent():GetModel()=="models/props_wasteland/light_spotlight01_lamp.mdl")) then return end
-	cam.Start2D()
-		surface.SetDrawColor(255,255,255,255)
-		surface.SetMaterial(robotWatchMat)
-		surface.DrawTexturedRect(0,0,ScrW(),ScrH())
-	cam.End2D()
-end)
-
+if CLIENT then language.Add("ffv_watchbot","Watching Bot") end
 if SERVER then
-	duplicator.RegisterEntityClass("ffv_watchbot",function(ply,data)
-		return
-	end,nil)
+	duplicator.RegisterEntityClass("ffv_watchbot",function(ply,data) return end,nil)
+	util.AddNetworkString("watchbotPicture")
 end
