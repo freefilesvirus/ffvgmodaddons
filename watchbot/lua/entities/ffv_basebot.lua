@@ -87,10 +87,11 @@ function ENT:movement(pos) end
 function ENT:extraRemove() end
 
 --useful functions
-function lineOfSight(ent,target,accuracy)
+function lineOfSight(ent,pos,accuracy)
 	--1 is gauranteed, -1 is have to look at it perfectly
+	if (not isvector(pos)) then pos = pos:GetPos() end
 	if (accuracy==nil) then accuracy = 0 end
-	local dif = (ent:GetPos()-target:GetPos()):GetNormalized()
+	local dif = (ent:GetPos()-pos):GetNormalized()
 	if (ent:IsPlayer() or ent:IsNPC()) then
 		dif:Rotate(-ent:EyeAngles())
 	else
