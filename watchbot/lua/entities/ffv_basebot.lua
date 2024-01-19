@@ -9,6 +9,7 @@ ENT.sounds = {}
 ENT.lastThink = 0
 ENT.target = nil
 ENT.goalPos = nil
+ENT.grounded = false
 
 function ENT:Think()
 	if CLIENT then return end

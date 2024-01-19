@@ -3,7 +3,7 @@ AddCSLuaFile()
 ENT.Type = "anim"
 ENT.Base = "ffv_basebot"
 ENT.PrintName = "Observation Bot"
-ENT.Spawnable = true
+ENT.Spawnable = false
 
 ENT.lookVar = Vector(0,0,0)
 ENT.lookVarSize = 1
@@ -11,8 +11,6 @@ ENT.lookVarSize = 1
 ENT.forward = 1
 ENT.goalAngle = false
 ENT.moveSpeed = 6.5
-
-ENT.grounded = false
 
 function ENT:delayedThink()
 	local size = self.lookVarSize
