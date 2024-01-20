@@ -25,14 +25,19 @@ function ENT:Initialize()
 	self.fakePhone:SetLocalAngles(Angle(0,0,0))
 
 	self.sound = CreateSound(self,"ambient/alarms/train_crossing_bell_loop1.wav")
-	self.sound:PlayEx(1,200)
+	self.sound:PlayEx(.6,200)
 	self.soundTick = CurTime()
 end
 
 function ENT:OnRemove()
 	if CLIENT then return end
 
-	if (not self.removing) then self:EmitSound("ambient/creatures/town_child_scream1.wav") end
+	if self.removing then 
+		util.BlastDamage(self,self,self:GetPos(),200,160)
+		local effect = EffectData()
+		effect:SetOrigin(self:GetPos())
+		util.Effect("Explosion",effect)
+	else self:EmitSound("ambient/creatures/town_child_scream1.wav") end
 	if (not (self.sound==nil)) then self.sound:Stop() end
 end
 
@@ -60,7 +65,7 @@ function ENT:Think()
 			self.sound:Stop()
 			self.soundTick = CurTime()-.4
 		else
-			self.sound:PlayEx(1,200)
+			self.sound:PlayEx(.6,200)
 			self.soundTick = CurTime()
 		end
 	end
@@ -70,10 +75,14 @@ function ENT:Think()
 end
 
 --this is so evil
-if CLIENT then return end
+if CLIENT then
+	killicon.Add("ffv_phonetrap","HUD/killicons/default",Color(255,80,0))
+	language.Add("ffv_phonetrap","Unknown Number")
+	return
+end
 hook.Add("PhysgunPickup","noPhysPhone",function(ply,ent)
-	if (ent:GetClass()=="ffv_phonestand") then return false end
+	if (ent:GetClass()=="ffv_phonetrap") then return false end
 end)
-hook.Add("CanUndo","noUndoPhone",function(ply,undo)
-	if (undo.Entities[1]:GetClass()=="ffv_phonestand") then return false end
+hook.Add("CanCreateUndo","noUndoPhone",function(ply,undo)
+	if (undo.Entities[1]:GetClass()=="ffv_phonetrap") then return false end
 end)
