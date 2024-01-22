@@ -1,7 +1,6 @@
 AddCSLuaFile()
 ENT.Type = "anim"
-if (WireLib==nil) then ENT.Base = "base_gmodentity"
-else ENT.Base = "base_wire_entity" end
+ENT.Base = "base_gmodentity"
 
 ENT.Spawnable = true
 ENT.PrintName = "Socket"
@@ -30,7 +29,7 @@ function ENT:Initialize()
 end
 
 function ENT:TriggerInput(name,val)
-	if (((name=="Unplug") and (val>0)) and IsValid(self.plugWeld)) then self:detach(self.plug) end
+	if (((name=="Unplug") and (val>0)) and (IsValid(self.plugWeld) and IsValid(self.plug))) then self:detach(self.plug) end
 end
 
 function ENT:Touch(ent)

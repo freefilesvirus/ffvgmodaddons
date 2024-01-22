@@ -1,7 +1,6 @@
 AddCSLuaFile()
 ENT.Type = "anim"
-if (WireLib==nil) then ENT.Base = "base_gmodentity"
-else ENT.Base = "base_wire_entity" end
+ENT.Base = "base_gmodentity"
 
 ENT.Spawnable = true
 ENT.PrintName = "Plug"
