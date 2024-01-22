@@ -26,7 +26,7 @@ function ENT:Initialize()
 
 	self.sound = CreateSound(self,"ambient/alarms/train_crossing_bell_loop1.wav")
 	self.sound:PlayEx(.6,200)
-	self.soundTick = CurTime()
+	self.soundTick = self.soundTick or CurTime()
 end
 
 function ENT:OnRemove()
@@ -37,7 +37,13 @@ function ENT:OnRemove()
 		local effect = EffectData()
 		effect:SetOrigin(self:GetPos())
 		util.Effect("Explosion",effect)
-	else self:EmitSound("ambient/creatures/town_child_scream1.wav") end
+	else
+		local replacement = ents.Create("ffv_phonetrap")
+		replacement:SetPos(self:GetPos())
+		replacement:SetAngles(self:GetAngles())
+		replacement.soundTick = self.soundTick
+		replacement:Spawn()
+	end
 	if (not (self.sound==nil)) then self.sound:Stop() end
 end
 
@@ -85,4 +91,7 @@ hook.Add("PhysgunPickup","noPhysPhone",function(ply,ent)
 end)
 hook.Add("CanCreateUndo","noUndoPhone",function(ply,undo)
 	if (undo.Entities[1]:GetClass()=="ffv_phonetrap") then return false end
+end)
+hook.Add("PreCleanupMan","removePhone",function()
+	for k,v in ipairs(ents.FindByClass("ffv_phonetrap")) do v.removing = true end
 end)

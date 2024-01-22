@@ -4,8 +4,7 @@ ENT.Base = "base_gmodentity"
 
 ENT.Spawnable = true
 ENT.PrintName = "Socket"
---ENT.Category = "Sockets & Plugs"
-ENT.Category = "ffvjunk"
+ENT.Category = "Plugs & Sockets"
 ENT.Instructions = "Goes with plug"
 
 ENT.plug = nil
@@ -20,6 +19,8 @@ function ENT:Initialize()
 	self:SetMoveType(MOVETYPE_VPHYSICS)
 	self:SetSolid(SOLID_VPHYSICS)
 	self:GetPhysicsObject():Wake()
+
+	self:SetUseType(SIMPLE_USE)
 end
 
 function ENT:Touch(ent)
@@ -45,20 +46,24 @@ function ENT:Think()
 end
 
 function ENT:attach(ent)
-	if ((CurTime()-self.unplugged)<.2) then return end
+	if ((CurTime()-self.unplugged)<.4) then return end
 
 	self.plug = ent
+	ent.socket = self
+	if ent:IsPlayerHolding() then ent.ply:DropObject() end
 
 	--get relative pos of stuff to plug
 	local plugWelds = constraint.FindConstraints(ent,"Weld")
 	local attachedInfo = {}
 	for k, v in pairs(plugWelds) do
-		local info = {
-			v.Ent2,
-			v.Bone2
-		}
-		v.Ent2:SetParent(ent)
-		table.insert(attachedInfo,info)
+		if ((v.Ent1==ent) or (v.Ent2==ent)) then
+			local info = {
+				v.Ent2,
+				v.Bone2
+			}
+			v.Ent2:SetParent(ent)
+			table.insert(attachedInfo,info)
+		end
 	end
 	--move the plug
 	ent:SetAngles(self:GetAngles())
@@ -72,11 +77,13 @@ function ENT:attach(ent)
 		ent2:SetParent(nil)
 		--weld it to stuff welded to self
 		for k1, v1 in pairs(constraint.FindConstraints(self,"Weld")) do
-			table.insert(self.attachConstraints,constraint.Weld(v1.Ent2,ent2,0,v[2],0,true,false))
+			if ((v1.Ent1==self) or (v1.Ent2==self)) then
+				table.insert(self.attachConstraints,constraint.Weld(v1.Ent2,ent2,0,v[2],-8,true,false))
+			end
 		end
-		table.insert(self.attachConstraints,constraint.Weld(self,ent2,0,v[2],0,true,false))
+		table.insert(self.attachConstraints,constraint.Weld(self,ent2,0,v[2],-8,true,false))
 	end
-	self.plugWeld = constraint.Weld(self,ent,0,0,0,true,false)
+	self.plugWeld = constraint.Weld(self,ent,0,0,-8,true,false)
 	ent.socketWeld = self.plugWeld
 
 	self:EmitSound("npc/turret_floor/click1.wav")
@@ -94,4 +101,35 @@ function ENT:detach(ent)
 	self.attachConstraints = {}
 
 	self:EmitSound("buttons/blip1.wav")
+end
+
+function ENT:PostEntityPaste(ply,ent,ents)
+	--reset vars
+	self.plug = nil
+	self.unplugged = 0
+	self.attachConstraints = {}
+	self.plugWeld = nil
+
+	--destroy socket related welds
+	timer.Simple(.01,function()
+		--timer here is probably not good but constraints arent created yet when postentitypaste is called
+		if (not IsValid(self)) then return end
+
+		for k,v in pairs(constraint.FindConstraints(self,"Weld")) do
+			if ((v.Ent1==self) or (v.Ent2==self)) then
+				for k1,v1 in pairs(constraint.FindConstraints(v.Ent2,"Weld")) do
+					if (((v1.Ent1==v.Ent2) or (v1.Ent2==v.Ent2)) and (v1.forcelimit==-8)) then v1.Constraint:Remove() end
+				end
+				if (v.forcelimit==-8) then v.Constraint:Remove() end
+			end
+		end
+
+		--look for nearby plugs
+		for k,v in pairs(ents) do
+			if ((v:GetClass()=="ffv_plug") and (self:GetPos():DistToSqr(v:GetPos())<310)) then
+				--another probably-not-good-solution timer
+				timer.Simple(.01,function() if IsValid(v) then self:attach(v) end end)
+			end
+		end
+	end)
 end
