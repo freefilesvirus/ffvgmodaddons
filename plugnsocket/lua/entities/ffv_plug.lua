@@ -1,6 +1,7 @@
 AddCSLuaFile()
 ENT.Type = "anim"
-ENT.Base = "base_gmodentity"
+if (WireLib==nil) then ENT.Base = "base_gmodentity"
+else ENT.Base = "base_wire_entity" end
 
 ENT.Spawnable = true
 ENT.PrintName = "Plug"
@@ -21,6 +22,21 @@ function ENT:Initialize()
 	self:GetPhysicsObject():SetMass(0)
 
 	self:SetUseType(SIMPLE_USE)
+
+	if (WireLib~=nil) then
+		WireLib.CreateOutputs(self,{"Attached"})
+		WireLib.CreateInputs(self,{"Unplug"})
+	end
+end
+
+function ENT:TriggerInput(name,val)
+	if (((name=="Unplug") and (val>0)) and IsValid(self.socketWeld)) then self.socket:detach(self) end
+end
+
+function ENT:Think()
+	if CLIENT then return end
+
+	if (WireLib~=nil) then WireLib.TriggerOutput(self,"Attached",(IsValid(self.socketWeld) and 1) or 0) end
 end
 
 function ENT:Use(ply)

@@ -1,6 +1,7 @@
 AddCSLuaFile()
 ENT.Type = "anim"
-ENT.Base = "base_gmodentity"
+if (WireLib==nil) then ENT.Base = "base_gmodentity"
+else ENT.Base = "base_wire_entity" end
 
 ENT.Spawnable = true
 ENT.PrintName = "Socket"
@@ -21,6 +22,15 @@ function ENT:Initialize()
 	self:GetPhysicsObject():Wake()
 
 	self:SetUseType(SIMPLE_USE)
+
+	if (WireLib~=nil) then
+		WireLib.CreateOutputs(self,{"Attached"})
+		WireLib.CreateInputs(self,{"Unplug"})
+	end
+end
+
+function ENT:TriggerInput(name,val)
+	if (((name=="Unplug") and (val>0)) and IsValid(self.plugWeld)) then self:detach(self.plug) end
 end
 
 function ENT:Touch(ent)
@@ -43,6 +53,8 @@ function ENT:Think()
 		end
 		self.attachConstraints = {}
 	end
+
+	if (WireLib~=nil) then WireLib.TriggerOutput(self,"Attached",(IsValid(self.plugWeld) and 1) or 0) end
 end
 
 function ENT:attach(ent)
@@ -87,6 +99,11 @@ function ENT:attach(ent)
 	ent.socketWeld = self.plugWeld
 
 	self:EmitSound("npc/turret_floor/click1.wav")
+
+	if (WireLib~=nil) then
+		WireLib.TriggerOutput(self,"Attached",1)
+		WireLib.TriggerOutput(ent,"Attached",1)
+	end
 end
 
 function ENT:detach(ent)
@@ -101,6 +118,11 @@ function ENT:detach(ent)
 	self.attachConstraints = {}
 
 	self:EmitSound("buttons/blip1.wav")
+
+	if (WireLib~=nil) then
+		WireLib.TriggerOutput(self,"Attached",0)
+		WireLib.TriggerOutput(ent,"Attached",0)
+	end
 end
 
 function ENT:PostEntityPaste(ply,ent,ents)
