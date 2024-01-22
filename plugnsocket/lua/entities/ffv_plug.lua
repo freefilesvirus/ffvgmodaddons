@@ -23,6 +23,10 @@ function ENT:Initialize()
 	self:SetUseType(SIMPLE_USE)
 end
 
+function ENT:Use()
+	if IsValid(self.socketWeld) then self.socket:detach(self) end
+end
+
 function ENT:PostEntityPaste(ply,ent,ents)
 	--reset vars
 	self.socket = nil
