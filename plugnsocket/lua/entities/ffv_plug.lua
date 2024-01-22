@@ -23,8 +23,12 @@ function ENT:Initialize()
 	self:SetUseType(SIMPLE_USE)
 end
 
-function ENT:Use()
-	if IsValid(self.socketWeld) then self.socket:detach(self) end
+function ENT:Use(ply)
+	if IsValid(self.socketWeld) then self.socket:detach(self) return end
+	if (ply:IsPlayer() and (not self:IsPlayerHolding())) then
+		ply:PickupObject(self)
+		self.ply = ply
+	end
 end
 
 function ENT:PostEntityPaste(ply,ent,ents)
