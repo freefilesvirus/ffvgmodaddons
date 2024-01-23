@@ -154,3 +154,9 @@ function ENT:PostEntityPaste(ply,ent,ents)
 		end
 	end)
 end
+
+function ENT:OnTakeDamage()
+	if GetConVar("pns_damagedetach"):GetBool() then
+		if IsValid(self.plugWeld) then self:detach(self.plug) end
+	end
+end

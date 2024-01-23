@@ -68,6 +68,14 @@ function ENT:PostEntityPaste(ply,ent,ents)
 	end)
 end
 
+function ENT:OnTakeDamage()
+	if GetConVar("pns_damagedetach"):GetBool() then
+		if IsValid(self.socketWeld) then self.socket:detach(self) end
+	end
+end
+
 if CLIENT then return end
+CreateConVar("pns_damagedetach",1)
+
 hook.Add("OnPhysgunPickup","ffvPhysgunPlug",function(ply,ent) ent.ply = ply end)
 hook.Add("GravGunOnPickedUp","ffvGravgunPlug",function(ply,ent) ent.ply = ply end)
