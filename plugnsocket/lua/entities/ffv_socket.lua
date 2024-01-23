@@ -64,9 +64,8 @@ function ENT:attach(ent)
 	if ent:IsPlayerHolding() then ent.ply:DropObject() end
 
 	--get relative pos of stuff to plug
-	local plugWelds = constraint.FindConstraints(ent,"Weld")
 	local attachedInfo = {}
-	for k, v in pairs(plugWelds) do
+	for k, v in pairs(constraint.FindConstraints(ent,"Weld")) do
 		if ((v.Ent1==ent) or (v.Ent2==ent)) then
 			local info = {
 				v.Ent2,
@@ -90,6 +89,8 @@ function ENT:attach(ent)
 		for k1, v1 in pairs(constraint.FindConstraints(self,"Weld")) do
 			if ((v1.Ent1==self) or (v1.Ent2==self)) then
 				table.insert(self.attachConstraints,constraint.Weld(v1.Ent2,ent2,0,v[2],-8,true,false))
+				--weld plug to stuff
+				table.insert(self.attachConstraints,constraint.Weld(ent,ent2,0,v[2],-8,true,false))
 			end
 		end
 		table.insert(self.attachConstraints,constraint.Weld(self,ent2,0,v[2],-8,true,false))

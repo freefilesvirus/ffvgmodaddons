@@ -5,12 +5,14 @@ if CLIENT then
 	TOOL.Information = {
 		{name="left",stage=0},
 		{name="left_1",stage=1},
+		{name="right",stage=1},
 		{name="reload"}
 	}
 	language.Add("tool.socketplacer.name","Socket Placer")
 	language.Add("tool.socketplacer.desc","Quickly attach sockets or plugs")
 	language.Add("tool.socketplacer.left","Place socket")
 	language.Add("tool.socketplacer.left_1","Place plug")
+	language.Add("tool.socketplacer.right","Place plug (Loose)")
 	language.Add("tool.socketplacer.reload","Switch attachment")
 end
 
@@ -58,6 +60,21 @@ function TOOL:LeftClick(trace)
 	ent:Spawn()
 	constraint.Weld(ent,trace.Entity,0,trace.PhysicsBone,0,true,true)
 	undo.Create(name)
+		undo.AddEntity(ent)
+		undo.SetPlayer(self:GetOwner())
+	undo.Finish()
+	return true
+end
+
+function TOOL:RightClick(trace)
+	if CLIENT then return end
+	if (self:GetStage()==0) then return end
+	local ent = ents.Create("ffv_plug")
+	local offset, rotOffset = self:get_offsets(trace)
+	ent:SetPos(trace.HitPos+offset)
+	ent:SetAngles(trace.HitNormal:Angle()+rotOffset)
+	ent:Spawn()
+	undo.Create("Plug")
 		undo.AddEntity(ent)
 		undo.SetPlayer(self:GetOwner())
 	undo.Finish()

@@ -40,7 +40,7 @@ end
 
 function ENT:Use(ply)
 	if IsValid(self.socketWeld) then self.socket:detach(self) return end
-	if (ply:IsPlayer() and (not self:IsPlayerHolding())) then
+	if ((ply:IsPlayer() and (not self:IsPlayerHolding())) and self:GetPhysicsObject():IsMotionEnabled()) then
 		ply:PickupObject(self)
 		self.ply = ply
 	end
