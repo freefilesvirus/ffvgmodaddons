@@ -90,7 +90,7 @@ hook.Add("PhysgunPickup","noPhysPhone",function(ply,ent)
 	if (ent:GetClass()=="ffv_phonetrap") then return false end
 end)
 hook.Add("CanCreateUndo","noUndoPhone",function(ply,undo)
-	if (undo.Entities[1]:GetClass()=="ffv_phonetrap") then return false end
+	if (IsValid(undo.Entities[1]) and (undo.Entities[1]:GetClass()=="ffv_phonetrap")) then return false end
 end)
 hook.Add("PreCleanupMan","removePhone",function()
 	for k,v in ipairs(ents.FindByClass("ffv_phonetrap")) do v.removing = true end
