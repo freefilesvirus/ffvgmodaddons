@@ -25,7 +25,7 @@ function ENT:Think()
 	self:tickThink()
 
 	--movement
-	local nextpos = nil
+	local nextPos = self:GetPos()
 	if (self.goalPos and (cvars.Number("ai_disabled")==0)) then
 		nextPos = self.goalPos
 		if istable(self.path) then
