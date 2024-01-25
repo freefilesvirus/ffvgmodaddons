@@ -10,6 +10,7 @@ ENT.lastThink = 0
 ENT.target = nil
 ENT.goalPos = nil
 ENT.grounded = false
+ENT.path = nil
 
 function ENT:Think()
 	if CLIENT then return end
@@ -18,6 +19,8 @@ function ENT:Think()
 	if ((CurTime()-self.lastThink)>1) then
 		self:delayedThink()
 		self.lastThink = CurTime()
+		--calculate path
+		if self.goalPos then self.path = AstarVector(self:GetPos(),self.goalPos) end
 	end
 	self:tickThink()
 
@@ -25,10 +28,8 @@ function ENT:Think()
 	local nextpos = nil
 	if (self.goalPos and (cvars.Number("ai_disabled")==0)) then
 		nextPos = self.goalPos
-		--see if theres pathfinding to do
-		local path = AstarVector(self:GetPos(),self.goalPos)
-		if istable(path) then
-			nextPos = path[#path-1]:GetCenter()
+		if istable(self.path) then
+			nextPos = self.path[#self.path-1]:GetCenter()
 		end
 	end
 	self:movement(nextPos)
