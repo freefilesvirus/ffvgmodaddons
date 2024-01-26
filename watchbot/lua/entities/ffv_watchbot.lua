@@ -124,7 +124,7 @@ function ENT:delayedThink()
 end
 
 function ENT:tickThink()
-	if (not IsValid(self.target)) then self.target = nil end
+	if ((not IsValid(self.target)) or (not self:qualifyLook(self.target))) then self.target = nil end
 	--look stuff
 	local latGear = self.parts[3]
 	local longGear = self.parts[4]
@@ -280,7 +280,7 @@ end
 
 function ENT:qualifyLook(ent)
 	if ent:IsWeapon() then return false end
-	if (ent==self) then return end
+	if (ent==self) then return false end
 	if (ent:GetClass()=="prop_physics") then return true end
 	if (ent:GetClass()=="ffv_watchbot") then return true end
 	if ent:IsPlayer() then
