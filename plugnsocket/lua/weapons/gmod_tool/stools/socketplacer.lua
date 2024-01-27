@@ -43,7 +43,7 @@ function TOOL:Think()
 end
 
 function TOOL:LeftClick(trace)
-	if CLIENT then return end
+	if CLIENT then return true end
 	local ent
 	local name
 	if (self:GetStage()==0) then
@@ -58,7 +58,7 @@ function TOOL:LeftClick(trace)
 	ent:SetPos(trace.HitPos+offset)
 	ent:SetAngles(trace.HitNormal:Angle()+rotOffset)
 	ent:Spawn()
-	constraint.Weld(ent,trace.Entity,0,trace.PhysicsBone,0,true,true)
+	constraint.Weld(ent,trace.Entity,0,trace.PhysicsBone,0,true,false)
 	undo.Create(name)
 		undo.AddEntity(ent)
 		undo.SetPlayer(self:GetOwner())
@@ -67,7 +67,7 @@ function TOOL:LeftClick(trace)
 end
 
 function TOOL:RightClick(trace)
-	if CLIENT then return end
+	if CLIENT then return true end
 	if (self:GetStage()==0) then return end
 	local ent = ents.Create("ffv_plug")
 	local offset, rotOffset = self:get_offsets(trace)
@@ -87,7 +87,7 @@ function TOOL:get_offsets(trace)
 	if (self:GetStage()==1) then
 		model = "models/props_lab/tpplug.mdl"
 		offset = Vector(8,0,0)
-		rotOffset = Angle(180,0,0)
+		rotOffset = Angle(180,0,180)
 	end
 	offset:Rotate(trace.HitNormal:Angle())
 
