@@ -369,10 +369,11 @@ net.Receive("watchbotPicture",function()
 			y=60,
 			w=180,
 			h=180,
-			format=png
+			format="jpeg",	--PNG doesn't render/export correctly and wastes space for most users.
+			--quality=96	--GMod's default is 90, values of 96 and above are high quality.
 		})
 		if (not file.Exists("data/observationbot","GAME")) then file.CreateDir("observationbot") end
-		file.Write("observationbot/"..filename..".png",texture)
+		file.Write("observationbot/"..filename..".jpg",texture)
 	cam.End2D()
 end)
 
