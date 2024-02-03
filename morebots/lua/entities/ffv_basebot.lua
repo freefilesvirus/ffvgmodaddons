@@ -12,10 +12,15 @@ ENT.goalPos = nil
 ENT.grounded = false
 ENT.path = nil
 
+ENT.isffvrobot = true
+
 function ENT:Think()
 	if CLIENT then return end
+
 	if (not IsValid(self.target)) then self.target = nil end
-	self:preThink()
+	if (IsValid(self.target) and ((cvars.Number("ai_ignoreplayers")==1) and self.target:IsPlayer())) then self.target = nil end
+
+	self:setGrounded()
 	if ((CurTime()-self.lastThink)>1) then
 		self:delayedThink()
 		self.lastThink = CurTime()
@@ -31,8 +36,8 @@ function ENT:Think()
 		if istable(self.path) then
 			nextPos = self.path[#self.path-1]:GetCenter()
 		end
+		self:movement(nextPos)
 	end
-	self:movement(nextPos)
 
 	self:NextThink(CurTime())
 	return true
@@ -40,8 +45,8 @@ end
 
 function ENT:OnRemove()
 	if CLIENT then return end
-	for k,v in pairs(self.parts) do v:Remove() end
-	for k,v in pairs(self.sounds) do v:Stop() end
+	for k,v in pairs(self.parts) do if IsValid(v) then v:Remove() end end
+	for k,v in pairs(self.sounds) do if v:IsPlaying() then v:Stop() end end
 	for k,v in ipairs(player.GetAll()) do
 		if (v:GetViewEntity()==self.parts[#self.parts]) then
 			v:SetViewEntity(v)
@@ -49,6 +54,33 @@ function ENT:OnRemove()
 		end
 	end
 	self:extraRemove()
+end
+
+function ENT:setGrounded()
+	local min,max = self:GetCollisionBounds()
+	min = min+Vector(2,2,1)
+	max = max-Vector(2,2,0)
+	local angles = self:GetAngles()
+	min:Rotate(angles)
+	local points = {
+		self:GetPos()+min,
+		self:GetPos()+min+getRotated(max*Vector(2,0,0),angles),
+		self:GetPos()+min+getRotated(max*Vector(0,2,0),angles),
+		self:GetPos()+min+getRotated(max*Vector(2,2,0),angles),
+		self:GetPos()+min+getRotated(max*Vector(1,1,0),angles)
+	}
+	local hits = 0
+	for k,v in pairs(points) do
+		-- debugoverlay.Sphere(v,1,.03,Color(255,0,0),true)
+		-- debugoverlay.Sphere(v-(self:GetUp()*2),1,.03,Color(0,0,255),true)
+		if (util.TraceLine({start=v,endpos=v-(self:GetUp()*8),filter=self}).Hit) then hits = hits+1 end
+	end
+	self.grounded = true
+	if (hits<3) then self.grounded = false end
+	if self:IsPlayerHolding() then self.grounded = false end
+	local x,z = math.abs(angles.x),math.abs(angles.z)
+	if ((((z>x) and z) or x)>50) then self.grounded = false end
+	if (not self:GetPhysicsObject():IsMotionEnabled()) then self.grounded = false end
 end
 
 function ENT:addPart(model,pos,ang,scale)
@@ -65,7 +97,9 @@ function ENT:addPart(model,pos,ang,scale)
 	return part
 end
 
-function ENT:makeLight(lamp)
+function ENT:makeLight(lamp,offset)
+	if (not offset) then offset = Vector(4,0,4) end
+
 	local light = ents.Create("env_projectedtexture")
 	light:Spawn()
 	light:SetParent(lamp)
@@ -73,10 +107,11 @@ function ENT:makeLight(lamp)
 	light:SetKeyValue("lightfov",70)
 	light:SetKeyValue("lightcolor",Format("255 255 255 255",10000))
 	light:Input("SpotlightTexture",nil,nil,"effects/flashlight001")
-	light:SetLocalPos(Vector(4,0,4))
+	light:SetLocalPos(offset)
 	light:SetLocalAngles(Angle(0,0,0))
 	light.bot = self
 	table.insert(self.parts,light)
+	
 	return light
 end
 
@@ -84,13 +119,72 @@ end
 function ENT:preThink() end
 function ENT:delayedThink() end
 function ENT:tickThink() end
-function ENT:movement(pos) end
 function ENT:extraRemove() end
+--also ENT:setGrounded() can be changed if needed to calculate differently
+
+------------------------------------------------------------
+--default stuff that i can copy over
+function ENT:Initialize()
+	if CLIENT then return end
+	self:SetModel("models/props_lab/filecabinet02.mdl")
+	self:PhysicsInit(SOLID_VPHYSICS)
+	local lamp = self:addPart("models/props_wasteland/light_spotlight01_lamp.mdl",Vector(0,0,20),Angle(0,0,0))
+	self:makeLight(lamp)
+end
+
+function ENT:tickThink()
+	local phys = self:GetPhysicsObject()
+	if self.grounded then
+		phys:SetMaterial("gmod_ice")
+		phys:SetVelocity(phys:GetVelocity()*.9)
+		phys:SetAngleVelocity(phys:GetAngleVelocity()*.9)
+	else
+		phys:SetMaterial("metal")
+	end
+end
+
+function ENT:movement(pos)
+	if (not self.grounded) then return end
+	-- debugoverlay.Sphere(pos,1,.03,Color(0,0,0),true)
+	-- debugoverlay.Sphere(self.goalPos,1,.03,Color(255,0,0),true)
+
+	--curb
+	local phys = self:GetPhysicsObject()
+	local curbAllowance = 6
+	local min,max = self:GetCollisionBounds()
+	local tr = {
+		start=self:GetPos()+getRotated(Vector(max.x+6,0,-max.z+curbAllowance),self:GetAngles()),
+		endpos=self:GetPos()+getRotated(Vector(max.x+6,0,-max.z),self:GetAngles()),
+		filter=self}
+	local trace = util.TraceLine(tr)
+	-- debugoverlay.Sphere(trace.StartPos,1,.03,Color(255,0,0),true)
+	-- debugoverlay.Sphere(trace.HitPos,1,.03,Color(0,0,255),true)
+	if ((tr.endpos.z-trace.HitPos.z)<-1) then
+		phys:AddAngleVelocity(Vector(0,-60,0))
+		phys:AddVelocity((self:GetUp()*16)-(self:GetForward()*2))
+	elseif (not trace.Hit) then phys:AddAngleVelocity(Vector(0,5,0)) end
+
+	--look at goal
+	local look = math.NormalizeAngle(getRotated(pos-self:GetPos(),-self:GetAngles()):Angle().y)
+	local lookMod = math.abs(math.Clamp(math.abs(look/8),1,3)-3)
+	phys:AddAngleVelocity(Vector(0,0,math.Clamp(look,-8,8)))
+
+	--forward
+	local x,z = self:GetAngles().x,self:GetAngles().z
+	local rampMod = (((math.abs(z)>math.abs(x)) and z) or x)
+	rampMod = (((rampMod<0) and math.abs(rampMod/10)) or 0)
+	phys:AddVelocity(self:GetForward()*((2*lookMod)+rampMod))
+
+	if ((tr.endpos:DistToSqr(self.goalPos)<600) or (self:GetPos():DistToSqr(self.goalPos)<600)) then self.goalPos = nil end
+end
+------------------------------------------------------------
 
 --useful functions
 function lineOfSight(ent,pos,accuracy)
 	--1 is gauranteed, -1 is have to look at it perfectly
-	if (not isvector(pos)) then pos = pos:GetPos() end
+	if (not isvector(pos)) then
+		pos = (pos:WorldSpaceCenter() or pos:GetPos())
+	end
 	if (accuracy==nil) then accuracy = 0 end
 	local dif = (ent:GetPos()-pos):GetNormalized()
 	if (ent:IsPlayer() or ent:IsNPC()) then
@@ -98,7 +192,7 @@ function lineOfSight(ent,pos,accuracy)
 	else
 		dif:Rotate(-ent:GetAngles())
 	end
-	return dif.x<accuracy
+	return ((dif.x<accuracy) and (navmesh.GetNearestNavArea(ent:GetPos()):IsVisible(pos)==true))
 end
 
 function randomChance(chance)
@@ -117,6 +211,12 @@ function weightedRandom(chances)
 		end
 	end
 	return drawTable[math.random(#drawTable)]
+end
+
+function getRotated(vec,ang)
+	local newVec = vec + Vector(0,0,0)
+	newVec:Rotate(ang)
+	return newVec
 end
 
 --pathfinding code taken from gmod wiki
@@ -223,7 +323,7 @@ properties.Add( "watchffvrobot", {
 
 	Filter = function( self, ent, ply )
 
-		if (not (string.StartsWith(ent:GetClass(),"ffv_") and string.EndsWith(ent:GetClass(),"bot"))) then return false end
+		if (not ent.isffvrobot) then return false end
 
 		return true
 
@@ -245,17 +345,24 @@ properties.Add( "watchffvrobot", {
 		if (not (ent.parts[#ent.parts]:GetClass()=="env_projectedtexture")) then return end
 
 		drive.PlayerStartDriving( ply, ent.parts[#ent.parts], "drive_ffvrobot" )
+		net.Start("markbotlight")
+		net.WriteEntity(ent.parts[#ent.parts])
+		net.Broadcast()
 
 	end
 
 } )
+if SERVER then util.AddNetworkString("markbotlight") end
+net.Receive("markbotlight",function()
+	net.ReadEntity().isbotlight = true
+end)
 
 local robotWatchMat = Material("materials/ffvrobots/overlay.png")
 hook.Add("PostDrawHUD","ffvrobotWatch",function()
 	local ply = LocalPlayer()
 	local viewEnt = ply:GetViewEntity()
 	if (not (viewEnt:GetClass()=="class C_EnvProjectedTexture")) then return end
-	if (not (viewEnt:GetParent():GetModel()=="models/props_wasteland/light_spotlight01_lamp.mdl")) then return end
+	if (not (viewEnt.isbotlight)) then return end
 	cam.Start2D()
 		surface.SetDrawColor(255,255,255,255)
 		surface.SetMaterial(robotWatchMat)
