@@ -31,7 +31,7 @@ function ENT:Think()
 
 	--movement
 	local nextPos = self:GetPos()
-	if (self.goalPos and (cvars.Number("ai_disabled")==0)) then
+	if (navmesh.IsLoaded() and (self.goalPos and (cvars.Number("ai_disabled")==0))) then
 		nextPos = self.goalPos
 		if istable(self.path) then
 			nextPos = self.path[#self.path-1]:GetCenter()
@@ -192,7 +192,7 @@ function lineOfSight(ent,pos,accuracy)
 	else
 		dif:Rotate(-ent:GetAngles())
 	end
-	return ((dif.x<accuracy) and (navmesh.GetNearestNavArea(ent:GetPos()):IsVisible(pos)==true))
+	return ((dif.x<accuracy) and (navmesh.IsLoaded() and (navmesh.GetNearestNavArea(ent:GetPos()):IsVisible(pos)==true)))
 end
 
 function randomChance(chance)
