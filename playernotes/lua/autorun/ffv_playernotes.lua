@@ -47,8 +47,11 @@ if SERVER then
 					note:SetAngles(util.StringToType(dict.ang,"Angle"))
 				end
 			end,
-			function()
-				if (not refresh) then print("something went wrong with spawning player notes") end
+			function(message)
+				if (not refresh) then
+					print("something went wrong with spawning player notes")
+					print(message)
+				end
 			end)
 	end
 	spawnPlayerNotes()
@@ -114,8 +117,9 @@ function buildGui()
 					print(body)
 				end
 			end,
-			function()
+			function(message)
 				LocalPlayer():ChatPrint("Something went wrong! No note made.")
+				print(message)
 			end)
 
 		net.Start("ffvbuildplayernote")
