@@ -51,3 +51,5 @@ end)
 hook.Add("ShouldCollide","ffvplayernotecollision",function(ent1,ent2)
 	if (ent1:GetClass()=="ffv_playernote") then return false end
 end)
+
+if SERVER then duplicator.RegisterEntityClass("ffv_playernote",function(ply,data) return end,nil) end
