@@ -22,7 +22,7 @@ if SERVER then
 			function(body)
 				body = string.Replace(body,"\\","")
 
-				if (refresh and (numNotes==#string.Split(body,"\n"))) then return end
+				if (refresh and (#ents.FindByClass("ffv_playernote")==(#string.Split(body,"\n")-1))) then return end
 				numNotes = #string.Split(body,"\n")
 
 				for k,v in ipairs(ents.FindByClass("ffv_playernote")) do
@@ -48,7 +48,7 @@ if SERVER then
 				end
 			end,
 			function()
-				print("something went wrong with spawning player notes")
+				if (not refresh) then print("something went wrong with spawning player notes") end
 			end)
 	end
 	spawnPlayerNotes()
