@@ -1,4 +1,6 @@
 if SERVER then
+	local numNotes = -1
+
 	util.AddNetworkString("ffvreadplayernote")
 	util.AddNetworkString("ffvbuildplayernote")
 
@@ -13,16 +15,19 @@ if SERVER then
 		note:SetAngles(net.ReadAngle())
 	end)
 
-	function spawnPlayerNotes()
-		for k,v in ipairs(ents.FindByClass("ffv_playernote")) do
-			v:Remove()
-		end
-
+	function spawnPlayerNotes(refresh)
 		http.Post("https://wthanpy.pythonanywhere.com/",
 			{getnotes="yes",
 			map=game.GetMap()},
 			function(body)
 				body = string.Replace(body,"\\","")
+
+				if (refresh and (numNotes==#string.Split(body,"\n"))) then return end
+				numNotes = #string.Split(body,"\n")
+
+				for k,v in ipairs(ents.FindByClass("ffv_playernote")) do
+					v:Remove()
+				end
 
 				for k,v in pairs(string.Split(body,"\n")) do
 					if (k==#string.Split(body,"\n")) then return end
@@ -49,6 +54,8 @@ if SERVER then
 	spawnPlayerNotes()
 	concommand.Add("pn_refresh",spawnPlayerNotes)
 	hook.Add("PostCleanupMap","ffvcleanuprespawnnotes",spawnPlayerNotes)
+
+	timer.Create("ffvcheckfornewnotes",2,0,function() spawnPlayerNotes(true) end)
 
 	concommand.Add("pn_clear",function()
 		for k,v in ipairs(ents.FindByClass("ffv_playernote")) do
