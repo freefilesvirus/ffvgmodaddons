@@ -58,7 +58,8 @@ if SERVER then
 	concommand.Add("pn_refresh",spawnPlayerNotes)
 	hook.Add("PostCleanupMap","ffvcleanuprespawnnotes",spawnPlayerNotes)
 
-	timer.Create("ffvcheckfornewnotes",2,0,function() spawnPlayerNotes(true) end)
+	local autorefresh = CreateConVar("pn_autorefresh","1")
+	timer.Create("ffvcheckfornewnotes",6,0,function() if autorefresh:GetBool() then spawnPlayerNotes(true) end end)
 
 	concommand.Add("pn_clear",function()
 		for k,v in ipairs(ents.FindByClass("ffv_playernote")) do
@@ -100,9 +101,13 @@ function buildGui()
 	function buildbutton:DoClick()
 		buildnoteframe:Close()
 
-		--hello all reading this. if you wouldntve realized this code is vulnerable, dont read the rest of the comment so i dont give ya any ideas. im aware that this is incredibly easy to exploit and i dont know how to fix it without either being really intrusive or forcing people to sign in through steam, but thatd be a lot of hassle for something thats meant to be easy to use. i ask please dont ruin the fun for everyone else by abusing it
 		local str = string.sub(buildmessage:GetValue(),1,128)
+		if (#string.Replace(str," ","")==0) then return end
 		str = string.Replace(str,"\"","'")
+		--couldnt trust people to be civil!
+		str = string.Replace(str,"nigger","fool")
+		str = string.Replace(str,"nigga","fool")
+		--hello all reading this. if you wouldntve realized this code is vulnerable, dont read the rest of the comment so i dont give ya any ideas. im aware that this is incredibly easy to exploit and i dont know how to fix it without either being really intrusive or forcing people to sign in through steam, but thatd be a lot of hassle for something thats meant to be easy to use. i ask please dont ruin the fun for everyone else by abusing it
 		http.Post("https://wthanpy.pythonanywhere.com/",
 			{message=str,
 			name=LocalPlayer():Nick(),
@@ -116,20 +121,20 @@ function buildGui()
 					LocalPlayer():ChatPrint("Something went wrong! No note made.")
 					print(body)
 				end
+
+				net.Start("ffvbuildplayernote")
+					net.WriteString(str)
+					net.WriteString(LocalPlayer():SteamID64())
+					net.WriteString(LocalPlayer():Nick())
+					net.WriteString(tostring(os.time()))
+					net.WriteVector(LocalPlayer():GetPos()+Vector(0,0,32))
+					net.WriteAngle(Angle(0,LocalPlayer():EyeAngles().y,0))
+				net.SendToServer()
 			end,
 			function(message)
 				LocalPlayer():ChatPrint("Something went wrong! No note made.")
 				print(message)
 			end)
-
-		net.Start("ffvbuildplayernote")
-			net.WriteString(string.sub(buildmessage:GetValue(),1,128))
-			net.WriteString(LocalPlayer():SteamID64())
-			net.WriteString(LocalPlayer():Nick())
-			net.WriteString(tostring(os.time()))
-			net.WriteVector(LocalPlayer():GetPos()+Vector(0,0,32))
-			net.WriteAngle(Angle(0,LocalPlayer():EyeAngles().y,0))
-		net.SendToServer()
 	end
 end
 
