@@ -55,17 +55,12 @@ if SERVER then
 			end)
 	end
 	spawnPlayerNotes()
-	concommand.Add("pn_refresh",spawnPlayerNotes)
-	hook.Add("PostCleanupMap","ffvcleanuprespawnnotes",spawnPlayerNotes)
-
 	local autorefresh = CreateConVar("pn_autorefresh","1")
-	timer.Create("ffvcheckfornewnotes",6,0,function() if autorefresh:GetBool() then spawnPlayerNotes(true) end end)
 
-	concommand.Add("pn_clear",function()
-		for k,v in ipairs(ents.FindByClass("ffv_playernote")) do
-			v:Remove()
-		end
-	end)
+	concommand.Add("pn_refresh",spawnPlayerNotes)
+	hook.Add("PostCleanupMap","ffvcleanuprespawnnotes",function() if autorefresh:GetBool() then spawnPlayerNotes(true) end end)
+
+	timer.Create("ffvcheckfornewnotes",6,0,function() if autorefresh:GetBool() then spawnPlayerNotes(true) end end)
 
 	hook.Add("PhysgunPickup","ffvnophysgunnotes",function(ply,ent)
 		if (ent:GetClass()=="ffv_playernote") then return false end
