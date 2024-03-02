@@ -15,6 +15,8 @@ if SERVER then
 		note:SetAngles(net.ReadAngle())
 	end)
 
+	local maxNotes = CreateConVar("pn_maxnotes","1000")
+
 	function spawnPlayerNotes(refresh)
 		http.Post("https://wthanpy.pythonanywhere.com/",
 			{getnotes="yes",
@@ -22,15 +24,26 @@ if SERVER then
 			function(body)
 				body = string.Replace(body,"\\","")
 
-				if (refresh and (#ents.FindByClass("ffv_playernote")==(#string.Split(body,"\n")-1))) then return end
+				playernotes = ents.FindByClass("ffv_playernote")
+
+				if (refresh and ((#playernotes==(#string.Split(body,"\n")-1)) or (maxNotes:GetInt()<=#playernotes))) then return end
 				numNotes = #string.Split(body,"\n")
 
-				for k,v in ipairs(ents.FindByClass("ffv_playernote")) do
+				for k,v in ipairs(playernotes) do
 					v:Remove()
 				end
 
 				for k,v in pairs(string.Split(body,"\n")) do
-					if (k==#string.Split(body,"\n")) then return end
+					if (k==#string.Split(body,"\n")) then
+						if (not refresh) then print((#string.Split(body,"\n")-1).." player notes loaded") end
+						return
+					end
+
+					if (k>=maxNotes:GetInt()) then
+						print("hit note limit! increase with pn_maxnotes")
+						print(k.." player notes loaded, "..(#string.Split(body,"\n")-1-k).." notes ignored")
+						return
+					end
 					
 					local dict = {}
 					for key, value in string.gmatch(v,'"([^"]+)":%s*"([^"]+)"') do
@@ -55,10 +68,16 @@ if SERVER then
 			end)
 	end
 	spawnPlayerNotes()
-	local autorefresh = CreateConVar("pn_autorefresh","1")
+	local autorefresh = CreateConVar("pn_autorefresh","0")
 
 	concommand.Add("pn_refresh",spawnPlayerNotes)
-	hook.Add("PostCleanupMap","ffvcleanuprespawnnotes",function() if autorefresh:GetBool() then spawnPlayerNotes(true) end end)
+	hook.Add("PostCleanupMap","ffvcleanuprespawnnotes",function()
+		spawnPlayerNotes(true)
+	end)
+
+	concommand.Add("pn_notecount",function()
+		print(#ents.FindByClass("ffv_playernote"))
+	end)
 
 	timer.Create("ffvcheckfornewnotes",6,0,function() if autorefresh:GetBool() then spawnPlayerNotes(true) end end)
 

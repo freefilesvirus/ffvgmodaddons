@@ -16,12 +16,15 @@ function ENT:Initialize()
 	self:SetSolid(SOLID_VPHYSICS)
 
 	self:GetPhysicsObject():Wake()
-	self:SetCollisionGroup(COLLISION_GROUP_WEAPON) --not great but the best one i could find
+	self:SetCollisionGroup(COLLISION_GROUP_PASSABLE_DOOR)
 	self:SetTrigger(true)
 
 	self:SetUseType(SIMPLE_USE)
 
 	self:SetNWString("message",self.message)
+
+	self:GetPhysicsObject():EnableCollisions(false)
+	self:SetCustomCollisionCheck(true)
 end
 
 function ENT:Use(ply)
@@ -47,9 +50,15 @@ hook.Add("PostDrawOpaqueRenderables","ffvplayernotetext",function()
 	end
 end)
 
---couldnt figure out how to have use work and also have no collision without this stupid patchwork solution
+--partial fix to the stopping train and elevator. doesnt always work
 hook.Add("ShouldCollide","ffvplayernotecollision",function(ent1,ent2)
-	if (ent1:GetClass()=="ffv_playernote") then return false end
+	if CLIENT then return end
+
+	if ((ent1:GetClass()=="ffv_playernote") or (ent2:GetClass()=="ffv_playernote")) then
+		if string.StartsWith(ent1:GetClass(),"func") then ent2:Remove() end
+		if string.StartsWith(ent2:GetClass(),"func") then ent1:Remove() end
+	end
 end)
 
 if SERVER then duplicator.RegisterEntityClass("ffv_playernote",function(ply,data) return end,nil) end
+
