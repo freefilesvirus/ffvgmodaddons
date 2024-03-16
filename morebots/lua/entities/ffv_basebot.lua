@@ -13,6 +13,8 @@ ENT.grounded = false
 ENT.path = nil
 
 ENT.isffvrobot = true
+ENT.willFight = false
+ENT.friendly = true
 
 function ENT:Think()
 	if CLIENT then return end
@@ -115,6 +117,84 @@ function ENT:makeLight(lamp,offset)
 	return light
 end
 
+function ENT:pop()
+	local makeUndo = false
+	local undoPly = nil
+	local newParts = {}
+	for k,v in pairs(undo.GetTable()["1"]) do
+		if (v["Entities"][1]==self) then
+			makeUndo = true
+			undoPly = v["Owner"]
+		end
+	end
+	if makeUndo then
+		undo.Create(self.PrintName)
+		undo.SetPlayer(undoPly)
+	end
+
+	table.insert(self.parts,self)
+	for k,v in pairs(self.parts) do
+		local nogo = false
+		if (v:GetClass()=="env_projectedtexture") then nogo = true end
+		if ((not nogo) and (v:GetModelScale()<.1)) then nogo = true end
+		if (not nogo) then
+			local part = ents.Create("prop_physics")
+			part:SetModel(v:GetModel())
+			part:SetModelScale(v:GetModelScale())
+			part:SetPos(v:GetPos())
+			part:SetAngles(v:GetAngles())
+			part:Spawn()
+			part:GetPhysicsObject():SetVelocity(self:GetPhysicsObject():GetVelocity())
+			part:GetPhysicsObject():SetAngleVelocity(self:GetPhysicsObject():GetAngleVelocity())
+			part:Activate()
+			if (v:GetModel()=="models/props_wasteland/light_spotlight01_lamp.mdl") then
+				local light = self:makeLight(part)
+				table.remove(self.parts)
+				--maybe would be better to use a new entity instead of timers? idk
+				local initDelay = math.Rand(1,6)
+				timer.Simple(initDelay,function()
+					if ((not IsValid(light)) or (not IsValid(part))) then return end
+					part:EmitSound("items/flashlight1.wav")
+					part:EmitSound("weapons/stunstick/spark"..math.random(3)..".wav")
+					part:SetSkin(1)
+					light:SetKeyValue("lightcolor",Format("0 0 0 0",0))
+				end)
+				timer.Simple(initDelay+.3,function()
+					if ((not IsValid(light)) or (not IsValid(part))) then return end
+					part:SetSkin(0)
+					light:SetKeyValue("lightcolor",Format("255 255 255 255",10000))
+				end)
+				timer.Simple(initDelay+math.Rand(.8,3),function()
+					if ((not IsValid(light)) or (not IsValid(part))) then return end
+					part:EmitSound("items/flashlight1.wav")
+					part:EmitSound("weapons/stunstick/spark"..math.random(3)..".wav")
+					part:SetSkin(1)
+					light:Remove()
+
+					local effectdata = EffectData()
+					effectdata:SetOrigin(part:GetPos()+getRotated(Vector(0,0,-0),part:GetAngles()))
+					effectdata:SetNormal(part:GetUp()-(part:GetForward()/2))
+					util.Effect("ManhackSparks",effectdata)
+				end)
+			end
+			undo.AddEntity(part)
+
+			for k,v in pairs(newParts) do
+				constraint.NoCollide(part,v,0,0)
+			end
+			table.insert(newParts,part)
+		end
+	end
+
+	if makeUndo then undo.Finish() end
+	self:OnRemove()
+end
+
+function ENT:getFriendly(ent)
+	if self.friendly then return (ent:IsPlayer() or (ent:Classify()<=3))
+	else return (not (ent:IsPlayer() or (ent:Classify()<=3))) end
+end
+
 --override these
 function ENT:preThink() end
 function ENT:delayedThink() end
@@ -182,6 +262,7 @@ end
 --useful functions
 function lineOfSight(ent,pos,accuracy)
 	--1 is gauranteed, -1 is have to look at it perfectly
+	if (not IsValid(pos)) then return false end
 	if (not isvector(pos)) then
 		pos = (pos:WorldSpaceCenter() or pos:GetPos())
 	end
@@ -318,7 +399,7 @@ drive.Register("drive_ffvrobot",
 
 properties.Add( "watchffvrobot", {
 	MenuLabel = "Watch",
-	Order = 1100,
+	Order = 1101,
 	MenuIcon = "materials/ffvrobots/robotwatch.png",
 
 	Filter = function( self, ent, ply )
@@ -369,3 +450,59 @@ hook.Add("PostDrawHUD","ffvrobotWatch",function()
 		surface.DrawTexturedRect(0,0,ScrW(),ScrH())
 	cam.End2D()
 end)
+
+--pop
+properties.Add( "popffvrobot", {
+	MenuLabel = "Pop",
+	Order = 1103,
+	MenuIcon = "materials/ffvrobots/robotwatch.png",
+
+	Filter = function( self, ent, ply )
+
+		if (not ent.isffvrobot) then return false end
+
+		return true
+
+	end,
+
+	Action = function( self, ent )
+
+		self:MsgStart()
+			net.WriteEntity( ent )
+		self:MsgEnd()
+
+	end,
+
+	Receive = function( self, length, ply )
+
+		net.ReadEntity():pop()
+
+	end
+
+} )
+
+--friendly/hostile
+properties.Add("friendlyffvrobot",{
+	MenuLabel="Make Hostile",
+	Order=1102,
+	MenuIcon="materials/ffvrobots/robotwatch.png",
+
+	Filter=function(self,ent,ply)
+		if (not ent.isffvrobot) then return false end
+		if (not ent.willFight) then return false end
+		local friendly = ent:GetNWBool("friendly",true)
+		if friendly then self.MenuLabel = "Make Hostile"
+		else self.MenuLabel = "Make Friendly" end
+		return true
+	end,
+	Action=function(self,ent)
+		self:MsgStart()
+		net.WriteEntity(ent)
+		self:MsgEnd()
+	end,
+	Receive=function()
+		local ent = net.ReadEntity()
+		ent.friendly = (not ent.friendly)
+		ent:SetNWBool("friendly",ent.friendly)
+	end
+})

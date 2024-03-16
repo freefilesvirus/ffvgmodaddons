@@ -5,6 +5,9 @@ ENT.Base = "ffv_basebot"
 ENT.PrintName = "Cop Bot"
 ENT.Spawnable = false
 
+ENT.willFight = true
+ENT.friendly = true
+
 ENT.lookVar = Vector(0,0,0)
 ENT.lookVarSize = 1
 ENT.lookTarget = nil
@@ -61,11 +64,14 @@ function ENT:delayedThink()
 
 	local oldState = self.state
 	if IsValid(self.target) then
-		--escort player
-		if self.target:IsPlayer() then self.state = 1 end
+		--escort player or attack
+		if self.target:IsPlayer() then
+			if self.friendly then self.state = 1
+			else self.state = 2 end
+		end
 		if self.target:IsNPC() then
 			--escort friendly npc
-			if (self.target:Classify()<=3) then self.state = 1
+			if (self:getFriendly(self.target)) then self.state = 1
 			--attack mean npc
 			else self.state = 2 end
 		end
@@ -124,7 +130,7 @@ function ENT:delayedThink()
 		--attack
 		--abandon if target isnt hostile somehow
 		--also, what a line!
-		if (((self.target:IsNPC() and (self.target:Classify()<=3)) or self.target:IsPlayer()) or (self.target.isffvrobot and (not self.target:GetClass()=="ffv_hoardbot"))) then
+		if (((self.target:IsNPC() and self:getFriendly(self.target)) or (self.target.isffvrobot and (not self.target:GetClass()=="ffv_hoardbot")))) then
 			self.state = 0
 			self.target = nil
 			return
@@ -313,6 +319,8 @@ end
 
 function ENT:Initialize()
 	if CLIENT then return end
+	self:SetNWBool("friendly",true)
+
 	self:SetModel("models/props_lab/reciever_cart.mdl")
 	self:PhysicsInit(SOLID_VPHYSICS)
 	self:GetPhysicsObject():SetMass(20)
@@ -335,7 +343,7 @@ function ENT:lookTargetInterest(ent)
 	if ((ent:GetClass()=="ffv_hoardbot") and IsValid(ent.rope)) then return 99 end
 	if ((ent:IsPlayer() and (cvars.Number("ai_ignoreplayers")==0)) or ent.isffvrobot) then return 1 end
 	if ent:IsNPC() then
-		if (ent:Classify()<=3) then return 1
+		if (self:getFriendly(ent)) then return 1
 		else return 99 end
 	end
 	return 0
