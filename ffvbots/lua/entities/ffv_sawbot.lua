@@ -1,6 +1,5 @@
 AddCSLuaFile()
 
-ENT.Type = "anim"
 ENT.Base = "ffv_basebot"
 ENT.PrintName = "Saw Bot"
 ENT.Spawnable = false
@@ -24,6 +23,7 @@ ENT.state = 0
 --1, saw down and forward
 
 function ENT:delayedThink()
+	self:fixRelationships()
 	if (self.target and (self:getInterest(self.target)==0)) then
 		self.target = nil
 		return
@@ -175,9 +175,9 @@ function ENT:tickThink()
 	--no funny spinny wheel :(
 end
 
-function ENT:Initialize()
-	if CLIENT then return end
+function ENT:extraInit()
 	self:SetNWBool("friendly",false)
+	self:fixRelationships()
 
 	self:SetModel("models/props_c17/FurnitureWashingmachine001a.mdl")
 	self:PhysicsInit(SOLID_VPHYSICS)
@@ -230,7 +230,7 @@ function ENT:PhysicsCollide(data,phys)
 	end
 end
 
-function ENT:OnTakeDamage(dmg)
+function ENT:extraTakeDamage(dmg)
 	if (self.state==0) then
 		self.lookGoal = ((self:GetPos()-dmg:GetAttacker():GetPos()):Angle().y-self:GetAngles().y+180)
 	end

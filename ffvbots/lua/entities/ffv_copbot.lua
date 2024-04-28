@@ -1,10 +1,10 @@
 AddCSLuaFile()
 
-ENT.Type = "anim"
 ENT.Base = "ffv_basebot"
 ENT.PrintName = "Cop Bot"
 ENT.Spawnable = false
 
+ENT.maxHealth = 200
 ENT.willFight = true
 ENT.friendly = true
 
@@ -34,6 +34,7 @@ ENT.jumping = false
 ENT.state = 0
 
 function ENT:delayedThink()
+	self:fixRelationships()
 	--look
 	self.lookVar:Random(-self.lookVarSize,self.lookVarSize)
 
@@ -51,7 +52,7 @@ function ENT:delayedThink()
 	local rank = {}
 	local hostile = false
 	for k,v in ipairs(ents.GetAll()) do
-		if (v:IsPlayer() or (v:IsNPC() or v.isffvrobot)) then
+		if ((v:IsPlayer() or (v:IsNPC())) and (not (v==self))) then
 			if (lineOfSight(self,v) and (v:GetPos():DistToSqr(self:GetPos())<360000)) then
 				table.insert(candidates,v)
 				local interest = self:lookTargetInterest(v)
@@ -64,21 +65,11 @@ function ENT:delayedThink()
 
 	local oldState = self.state
 	if IsValid(self.target) then
-		--escort player or attack
-		if self.target:IsPlayer() then
-			if self.friendly then self.state = 1
-			else self.state = 2 end
-		end
-		if self.target:IsNPC() then
-			--escort friendly npc
-			if (self:getFriendly(self.target)) then self.state = 1
-			--attack mean npc
-			else self.state = 2 end
-		end
+		--be nice to nice or mean to mean
+		if self:getFriendly(self.target) then self.state = 1 
+		else self.state = 2 end
 		--attack theiving hoardbot
 		if ((self.target:GetClass()=="ffv_hoardbot") and IsValid(self.target.rope)) then self.state = 2 end
-		--escort robot
-		if (self.target.isffvrobot and ((not (self.target:GetClass()=="ffv_hoardbot")) and (not self.target:GetClass()=="ffv_copbot"))) then self.state = 1 end
 		--glare at other
 		if (((not self.target:IsPlayer()) and (not self.target:IsNPC())) and ((not self.target.isffvrobot) or (self.target:GetClass()=="ffv_hoardbot"))) then
 			if (self.state~=2) then self.state = 3 end
@@ -220,7 +211,7 @@ function ENT:tickThink()
 	lamp:SetAngles(Angle(
 		lamp:GetAngles().x-(math.AngleDifference(lamp:GetAngles().x,angoal.x)/6),
 		lamp:GetAngles().y-(math.AngleDifference(lamp:GetAngles().y,angoal.y)/6),
-		self:GetAngles().z
+		0--self:GetAngles().z
 	))
 
 	if (cvars.Number("ai_disabled")==0) then
@@ -268,7 +259,7 @@ function ENT:tickThink()
 	if self.grounded then self.jumping = false end
 end
 
-function ENT:OnTakeDamage(dmg)
+function ENT:extraTakeDamage(dmg)
 	if (self.state~=2) then
 		self.target = dmg:GetAttacker()
 		self.state = 4
@@ -317,9 +308,10 @@ function ENT:movement(pos)
 	if ((tr.endpos:DistToSqr(self.goalPos)<4000) or (self:GetPos():DistToSqr(self.goalPos)<4000)) then self.goalPos = nil end
 end
 
-function ENT:Initialize()
-	if CLIENT then return end
+function ENT:extraInit()
 	self:SetNWBool("friendly",true)
+	self:fixRelationships()
+	self:SetHealth(80)
 
 	self:SetModel("models/props_lab/reciever_cart.mdl")
 	self:PhysicsInit(SOLID_VPHYSICS)

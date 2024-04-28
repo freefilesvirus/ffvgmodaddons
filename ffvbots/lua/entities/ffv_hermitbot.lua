@@ -1,6 +1,5 @@
 AddCSLuaFile()
 
-ENT.Type = "anim"
 ENT.Base = "ffv_basebot"
 ENT.PrintName = "Hermit Bot"
 ENT.Spawnable = false
@@ -15,8 +14,7 @@ function ENT:tickThink()
 	bucket:SetLocalAngles(Angle(180,90,bucket:GetLocalAngles().z-(math.AngleDifference(bucket:GetLocalAngles().z,(self.peek*20))/6)))
 end
 
-function ENT:Initialize()
-	if CLIENT then return end
+function ENT:extraInit()
 	self:SetModel("models/props_wasteland/light_spotlight01_lamp.mdl")
 	self:PhysicsInit(SOLID_VPHYSICS)
 

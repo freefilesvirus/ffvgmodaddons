@@ -1,6 +1,5 @@
 AddCSLuaFile()
 
-ENT.Type = "anim"
 ENT.Base = "ffv_basebot"
 ENT.PrintName = "Hoarding Bot"
 ENT.Spawnable = false
@@ -312,8 +311,7 @@ function ENT:movement(pos)
 	end
 end
 
-function ENT:Initialize()
-	if CLIENT then return end
+function ENT:extraInit()
 	self:SetModel("models/props_lab/kennel_physics.mdl")
 	self:PhysicsInit(SOLID_VPHYSICS)
 	self:GetPhysicsObject():SetMaterial("gmod_ice")
@@ -339,7 +337,7 @@ function ENT:Initialize()
 	self:SetCustomCollisionCheck(true)
 end
 
-function ENT:OnTakeDamage(info)
+function ENT:extraTakeDamage(info)
 	if ((self.state==1) and randomChance(6)) then
 		self.state = 3
 		self.target = nil

@@ -1,7 +1,6 @@
 AddCSLuaFile()
 
-ENT.Type = "anim"
-ENT.Base = "base_gmodentity"
+ENT.Base = "base_ai"
 ENT.Spawnable = false
 
 ENT.parts = {}
@@ -12,9 +11,48 @@ ENT.goalPos = nil
 ENT.grounded = false
 ENT.path = nil
 
+ENT.maxHealth = 80
 ENT.isffvrobot = true
 ENT.willFight = false
 ENT.friendly = true
+
+function ENT:Initialize()
+	if CLIENT then return end
+	self:SetHealth(self.maxHealth)
+	self:SetHullType( HULL_MEDIUM )
+	self:SetHullSizeNormal()
+	self:SetActivity(ACT_COVER)
+
+	self:extraInit()
+end
+
+function ENT:OnTakeDamage(dmg)
+	self:EmitSound("weapons/stunstick/spark"..math.random(3)..".wav")
+	self:SetHealth(self:Health()-dmg:GetDamage())
+	if (self:Health()<1) then
+		self:pop()
+		return
+	end
+	self:extraTakeDamage(dmg)
+
+	--light
+	if (not randomChance(3)) then return end
+	local light = self.parts[#self.parts]
+	local lamp = light:GetParent()
+	lamp:SetSkin(1)
+	light:SetKeyValue("lightcolor",Format("0 0 0 0",10000))
+	timer.Simple(.2,function()
+		if (not IsValid(self)) then return end
+		lamp:SetSkin(0)
+		light:SetKeyValue("lightcolor",Format("255 255 255 255",10000))
+	end)
+	--spark
+	if (not randomChance(6)) then return end
+	local effectdata = EffectData()
+	effectdata:SetOrigin(lamp:GetPos()+getRotated(Vector(0,0,-0),lamp:GetAngles()))
+	effectdata:SetNormal(lamp:GetUp()-(lamp:GetForward()/2))
+	util.Effect("ManhackSparks",effectdata)
+end
 
 function ENT:Think()
 	if CLIENT then return end
@@ -118,6 +156,7 @@ function ENT:makeLight(lamp,offset)
 end
 
 function ENT:pop()
+	self:prePop()
 	local makeUndo = false
 	local undoPly = nil
 	local newParts = {}
@@ -143,6 +182,7 @@ function ENT:pop()
 			part:SetModelScale(v:GetModelScale())
 			part:SetPos(v:GetPos())
 			part:SetAngles(v:GetAngles())
+			part:SetSkin(v:GetSkin())
 			part:Spawn()
 			part:GetPhysicsObject():SetVelocity(self:GetPhysicsObject():GetVelocity())
 			part:GetPhysicsObject():SetAngleVelocity(self:GetPhysicsObject():GetAngleVelocity())
@@ -151,6 +191,7 @@ function ENT:pop()
 				local light = self:makeLight(part)
 				table.remove(self.parts)
 				--maybe would be better to use a new entity instead of timers? idk
+				--i wrote that comment a while ago; new entity? what?
 				local initDelay = math.Rand(1,6)
 				timer.Simple(initDelay,function()
 					if ((not IsValid(light)) or (not IsValid(part))) then return end
@@ -190,21 +231,41 @@ function ENT:pop()
 	self:OnRemove()
 end
 
+function ENT:fixRelationships()
+	if (not self.willFight) then return end
+
+	for k,v in ipairs(ents.FindByClass("npc_*")) do
+		if self:getFriendly(v) then
+			v:AddEntityRelationship(self,D_LI,5)
+		else
+			v:AddEntityRelationship(self,D_HT,5)
+			v:SetEnemy( self )
+		end
+	end
+end
+
 function ENT:getFriendly(ent)
+	if (not (ent:IsPlayer() or ent:IsNPC())) then return false end
+	if ent.isffvrobot then
+		return (self.friendly and ent.friendly)
+	end
 	if self.friendly then return (ent:IsPlayer() or (ent:Classify()<=3))
 	else return (not (ent:IsPlayer() or (ent:Classify()<=3))) end
 end
 
 --override these
+function ENT:extraInit() end
+function ENT:extraTakeDamage(dmg) end
 function ENT:preThink() end
 function ENT:delayedThink() end
 function ENT:tickThink() end
 function ENT:extraRemove() end
+function ENT:prePop() end
 --also ENT:setGrounded() can be changed if needed to calculate differently
 
 ------------------------------------------------------------
 --default stuff that i can copy over
-function ENT:Initialize()
+function ENT:extraInit()
 	if CLIENT then return end
 	self:SetModel("models/props_lab/filecabinet02.mdl")
 	self:PhysicsInit(SOLID_VPHYSICS)
@@ -262,7 +323,7 @@ end
 --useful functions
 function lineOfSight(ent,pos,accuracy)
 	--1 is gauranteed, -1 is have to look at it perfectly
-	if (not IsValid(pos)) then return false end
+	if ((not isvector(pos)) and (not IsValid(pos))) then return false end
 	if (not isvector(pos)) then
 		pos = (pos:WorldSpaceCenter() or pos:GetPos())
 	end
@@ -273,7 +334,7 @@ function lineOfSight(ent,pos,accuracy)
 	else
 		dif:Rotate(-ent:GetAngles())
 	end
-	return ((dif.x<accuracy) and (navmesh.IsLoaded() and (navmesh.GetNearestNavArea(ent:GetPos()):IsVisible(pos)==true)))
+	return ((dif.x<accuracy) and (not util.TraceLine({start=ent:GetPos(),endpos=pos}).HitWorld))
 end
 
 function randomChance(chance)
@@ -504,5 +565,6 @@ properties.Add("friendlyffvrobot",{
 		local ent = net.ReadEntity()
 		ent.friendly = (not ent.friendly)
 		ent:SetNWBool("friendly",ent.friendly)
+		ent:fixRelationships()
 	end
 })

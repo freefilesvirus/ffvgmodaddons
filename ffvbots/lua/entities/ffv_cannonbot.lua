@@ -1,6 +1,5 @@
 AddCSLuaFile()
 
-ENT.Type = "anim"
 ENT.Base = "ffv_basebot"
 ENT.PrintName = "Cannon Bot"
 ENT.Spawnable = false
@@ -79,8 +78,7 @@ function ENT:tickThink()
 	end
 end
 
-function ENT:Initialize()
-	if CLIENT then return end
+function ENT:extraInit()
 	self:SetModel("models/props_c17/furnitureStove001a.mdl")
 	self:PhysicsInit(SOLID_VPHYSICS)
 	--parts

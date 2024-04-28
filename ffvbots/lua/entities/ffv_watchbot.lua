@@ -1,6 +1,5 @@
 AddCSLuaFile()
 
-ENT.Type = "anim"
 ENT.Base = "ffv_basebot"
 ENT.PrintName = "Observation Bot"
 ENT.Spawnable = false
@@ -228,8 +227,7 @@ function ENT:movement(pos)
 	end
 end
 
-function ENT:Initialize()
-	if CLIENT then return end
+function ENT:extraInit()
 	self:SetModel("models/props_c17/oildrum001.mdl")
 	self:PhysicsInit(SOLID_VPHYSICS)
 	--add parts
@@ -252,7 +250,7 @@ function ENT:Initialize()
 	table.insert(self.sounds,sound)
 end
 
-function ENT:OnTakeDamage(info)
+function ENT:extraTakeDamage(info)
 	if (weightedRandom({self:getInterest(info:GetAttacker())+2,1})==1) then
 		self.target = info:GetAttacker()
 	end

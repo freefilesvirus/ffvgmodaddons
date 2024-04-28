@@ -1,6 +1,5 @@
 AddCSLuaFile()
 
-ENT.Type = "anim"
 ENT.Base = "ffv_basebot"
 ENT.PrintName = "Janitor Bot"
 ENT.Spawnable = false
@@ -144,7 +143,7 @@ function ENT:tickThink()
 		math.AngleDifference(ang.y,plug:GetAngles().y),
 		math.AngleDifference(ang.z,plug:GetAngles().z))/2))
 	--fix stuck plug
-	if (((not plug:IsPlayerHolding()) and (not self:IsPlayerHolding())) and (plug:GetPos():DistToSqr(pos)>10000)) then plug:SetPos(pos) end
+	if (plug:GetPhysicsObject():IsMotionEnabled() and (not plug:IsPlayerHolding()) and (not self:IsPlayerHolding()) and (plug:GetPos():DistToSqr(pos)>10000)) then plug:SetPos(pos) end
 	--weld plug to body
 	if ((not self.welded) and ((self.state==2) and (plug:GetPos():DistToSqr(pos)<30))) then
 		plug:EmitSound("physics/flesh/flesh_squishy_impact_hard"..math.random(4)..".wav")
@@ -213,8 +212,7 @@ function ENT:PhysicsCollide(data,phys)
 	self.jumping = false
 end
 
-function ENT:Initialize()
-	if CLIENT then return end
+function ENT:extraInit()
 	self:SetModel("models/props_wasteland/kitchen_stove002a.mdl")
 	self:PhysicsInit(SOLID_VPHYSICS)
 	--parts
