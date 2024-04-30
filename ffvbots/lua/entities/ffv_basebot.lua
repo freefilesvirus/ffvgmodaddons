@@ -160,10 +160,12 @@ function ENT:pop()
 	local makeUndo = false
 	local undoPly = nil
 	local newParts = {}
-	for k,v in pairs(undo.GetTable()["1"]) do
-		if (v["Entities"][1]==self) then
-			makeUndo = true
-			undoPly = v["Owner"]
+	for k,v in pairs(undo.GetTable()) do
+		for k1,v1 in pairs(v) do
+			if (v1["Entities"][1]==self) then
+				makeUndo = true
+				undoPly = v1["Owner"]
+			end
 		end
 	end
 	if makeUndo then
