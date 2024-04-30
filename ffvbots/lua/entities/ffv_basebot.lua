@@ -236,12 +236,14 @@ end
 function ENT:fixRelationships()
 	if (not self.willFight) then return end
 
-	for k,v in ipairs(ents.FindByClass("npc_*")) do
-		if self:getFriendly(v) then
-			v:AddEntityRelationship(self,D_LI,5)
-		else
-			v:AddEntityRelationship(self,D_HT,5)
-			v:SetEnemy( self )
+	for k,v in ipairs(ents.GetAll()) do
+		if v:IsNPC() then
+			if self:getFriendly(v) then
+				v:AddEntityRelationship(self,D_LI,5)
+			else
+				v:AddEntityRelationship(self,D_HT,5)
+				v:SetEnemy( self )
+			end
 		end
 	end
 end
