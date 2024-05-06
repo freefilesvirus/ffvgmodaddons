@@ -12,7 +12,7 @@ end
 
 function TOOL:LeftClick(trace)
 	if CLIENT then return (not trace.HitWorld) end
-	if trace.HitWorld then return false end
+	if (trace.HitWorld or trace.Entity:IsPlayer()) then return false end
 	local ent = trace.Entity
 
 	--find lowest point
@@ -36,7 +36,7 @@ function TOOL:LeftClick(trace)
 		endpos=trace.HitPos-Vector(0,0,math.abs(min.z*2)),
 		filter=ent
 	})
-	box:SetPos(tr.HitPos+Vector(0,0,math.abs(min.z)))
+	box:SetPos(tr.Hit and (tr.HitPos+Vector(0,0,math.abs(min.z))) or trace.HitPos)
 	box:Spawn()
 	if IsValid(ent:GetPhysicsObject()) then box:GetPhysicsObject():SetVelocity(ent:GetPhysicsObject():GetVelocity()) end
 
