@@ -28,6 +28,7 @@ function TOOL:LeftClick(trace)
 
 	--make box
 	local box = ents.Create("ffv_packbox")
+	box.hasNpc = ent:IsNPC()
 	--make sure box isnt submerged in ground
 	box:SetModel(self:GetClientInfo("model"))
 	local min,max = box:GetModelBounds()
@@ -37,8 +38,6 @@ function TOOL:LeftClick(trace)
 		filter=ent
 	})
 	box:SetPos(tr.Hit and (tr.HitPos+Vector(0,0,math.abs(min.z))) or trace.HitPos)
-	box:Spawn()
-	if IsValid(ent:GetPhysicsObject()) then box:GetPhysicsObject():SetVelocity(ent:GetPhysicsObject():GetVelocity()) end
 
 	duplicator.SetLocalPos(Vector(box:GetPos().x,box:GetPos().y,lowest))
 	box.contraption = duplicator.Copy(ent)
@@ -51,6 +50,10 @@ function TOOL:LeftClick(trace)
 		undo.AddEntity(box)
 		undo.SetPlayer(self:GetOwner())
 	undo.Finish()
+
+	--spawn box
+	box:Spawn()
+	if IsValid(ent:GetPhysicsObject()) then box:GetPhysicsObject():SetVelocity(ent:GetPhysicsObject():GetVelocity()) end
 
 	return true
 end

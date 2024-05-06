@@ -1,4 +1,9 @@
 {
 	"title": "Box Packer",
-	"type": "ServerContent"
+	"type": "tool",
+	"tags": 
+	[
+		"build",
+		"fun"
+	]
 }
