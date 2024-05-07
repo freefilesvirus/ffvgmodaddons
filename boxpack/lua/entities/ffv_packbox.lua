@@ -43,7 +43,8 @@ function ENT:OnTakeDamage(dmg)
 
 	--gibs
 	local numents = #ents.GetAll()
-	self:GibBreakServer(dmg:GetDamageForce()/8)
+	self:GetPhysicsObject():AddVelocity(dmg:GetDamageForce()/24)
+	self:GibBreakServer(Vector())
 	local allents = ents.GetAll()
 	for k=1,#allents-numents do
 		allents[numents+k]:SetCollisionGroup(COLLISION_GROUP_WORLD)
@@ -53,12 +54,15 @@ function ENT:OnTakeDamage(dmg)
 	local min,max = self:WorldSpaceAABB()
 	duplicator.SetLocalPos(Vector(self:GetPos().x,self:GetPos().y,min.z))
 	local ents,cons = duplicator.Paste(ply,self.contraption.Entities,self.contraption.Constraints)
-	self:Remove()
 	duplicator.SetLocalPos(vector_origin)
 
+	local vel = self:GetPhysicsObject():GetVelocity()
 	for v in pairs(ents) do
-		local ent = ents[v]
-		if IsValid(ent:GetPhysicsObject()) then ent:GetPhysicsObject():Wake() end
+		local ent = ents[v]:GetPhysicsObject()
+		if IsValid(ent) then
+			ent:Wake()
+			ent:SetVelocity(vel)
+		end
 	end
 
 	--undo
@@ -68,6 +72,7 @@ function ENT:OnTakeDamage(dmg)
 		if IsValid(gib) then undo.AddEntity(gib) end
 		undo.SetPlayer(ply)
 	undo.Finish()
+	self:Remove()
 end
 
 function randomChance(chance)
