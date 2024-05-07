@@ -11,9 +11,9 @@ if CLIENT then
 end
 
 function TOOL:LeftClick(trace)
-	if CLIENT then return (not trace.HitWorld) end
-	if (trace.HitWorld or trace.Entity:IsPlayer()) then return false end
 	local ent = trace.Entity
+	if CLIENT then return self:validEnt(ent) end
+	if (not self:validEnt(ent)) then return false end
 
 	--find lowest point
 	local cents = {}
@@ -56,6 +56,10 @@ function TOOL:LeftClick(trace)
 	if IsValid(ent:GetPhysicsObject()) then box:GetPhysicsObject():SetVelocity(ent:GetPhysicsObject():GetVelocity()) end
 
 	return true
+end
+
+function TOOL:validEnt(ent)
+	return (not (ent:IsWorld() or ent:IsPlayer() or (ent:GetClass()=="ffv_packbox")))
 end
 
 function TOOL.BuildCPanel(cpanel)

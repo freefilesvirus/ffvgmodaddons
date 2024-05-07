@@ -50,7 +50,8 @@ function ENT:OnTakeDamage(dmg)
 	end
 
 	--dupe
-	duplicator.SetLocalPos(self:GetPos())
+	local min,max = self:WorldSpaceAABB()
+	duplicator.SetLocalPos(Vector(self:GetPos().x,self:GetPos().y,min.z))
 	local ents,cons = duplicator.Paste(ply,self.contraption.Entities,self.contraption.Constraints)
 	self:Remove()
 	duplicator.SetLocalPos(vector_origin)
