@@ -9,6 +9,8 @@ ENT.contraption = {}
 ENT.hasNpc = false
 ENT.lastBump = 0
 
+ENT.startedUnpack = false
+
 function ENT:Initialize()
 	if CLIENT then return end
 	self:SetUseType(SIMPLE_USE)
@@ -24,7 +26,7 @@ function ENT:Think()
 	if CLIENT then return end
 
 	local time = CurTime()-self.lastBump
-	if (self.hasNpc and (time>1) and randomChance(math.floor(10-time))) then
+	if (self.hasNpc and (time>1) and (math.random(math.floor(10-time))==1)) then
 		self.lastBump = CurTime()
 		local size = 800
 		self:GetPhysicsObject():AddAngleVelocity(Vector(math.random(size)-(size/2),math.random(size)-(size/2),math.random(size)-(size/2)))
@@ -38,12 +40,20 @@ function ENT:Use(ply)
 end
 
 function ENT:OnTakeDamage(dmg)
-	local ply = dmg:GetAttacker()
-	if (not ply:IsPlayer()) then return end
+	self:unpack(dmg:GetDamageForce()/24,dmg:GetAttacker())
+end
+
+function ENT:OnRemove()
+	if SERVER then self:unpack(Vector(0,0,0)) end
+end
+
+function ENT:unpack(gibvel,ply)
+	if self.startedUnpack then return end
+	self.startedUnpack = true
 
 	--gibs
 	local numents = #ents.GetAll()
-	self:GetPhysicsObject():AddVelocity(dmg:GetDamageForce()/24)
+	self:GetPhysicsObject():AddVelocity(gibvel)
 	self:GibBreakServer(Vector())
 	local allents = ents.GetAll()
 	for k=1,#allents-numents do
@@ -53,7 +63,7 @@ function ENT:OnTakeDamage(dmg)
 	--dupe
 	local min,max = self:WorldSpaceAABB()
 	duplicator.SetLocalPos(Vector(self:GetPos().x,self:GetPos().y,min.z))
-	local ents,cons = duplicator.Paste(ply,self.contraption.Entities,self.contraption.Constraints)
+	local ents,cons = duplicator.Paste(nil,self.contraption.Entities,self.contraption.Constraints)
 	duplicator.SetLocalPos(vector_origin)
 
 	local vel = self:GetPhysicsObject():GetVelocity()
@@ -66,16 +76,14 @@ function ENT:OnTakeDamage(dmg)
 	end
 
 	--undo
-	undo.Create("Unpack")
-		for v in pairs(ents) do undo.AddEntity(ents[v]) end
-		for v in pairs(cons) do undo.AddEntity(cons[v]) end
-		if IsValid(gib) then undo.AddEntity(gib) end
-		undo.SetPlayer(ply)
-	undo.Finish()
-	self:Remove()
-end
+	if (IsValid(ply) and ply:IsPlayer()) then
+		undo.Create("Unpack")
+			for v in pairs(ents) do undo.AddEntity(ents[v]) end
+			for v in pairs(cons) do undo.AddEntity(cons[v]) end
+			if IsValid(gib) then undo.AddEntity(gib) end
+			undo.SetPlayer(ply)
+		undo.Finish()
+	end
 
-function randomChance(chance)
-	--its just a 1 in blank chance, cause im lazy and is quicker than typing out (math.random(2)==1)
-	return (math.random(chance)==1)
+	self:Remove()
 end

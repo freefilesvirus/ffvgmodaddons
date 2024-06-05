@@ -59,7 +59,12 @@ function TOOL:LeftClick(trace)
 end
 
 function TOOL:validEnt(ent)
-	return (not (ent:IsWorld() or ent:IsPlayer() or (ent:GetClass()=="ffv_packbox")))
+	if (ent:IsWorld() or ent:IsPlayer() or (ent:GetClass()=="ffv_packbox")) then return false end
+
+	local cents = {}
+	local cons = {}
+	duplicator.GetAllConstrainedEntitiesAndConstraints(ent,cents,cons)
+	return (not table.IsEmpty(cents))
 end
 
 function TOOL.BuildCPanel(cpanel)
