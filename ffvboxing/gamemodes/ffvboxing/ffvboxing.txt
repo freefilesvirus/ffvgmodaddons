@@ -1,0 +1,35 @@
+"Gamemode"
+{
+	"base" "base"
+	"title" "Boxing & Betting"
+	"maps" "^box_"
+	"category" "pvp"
+	"menusystem" "1"
+
+	"Settings"
+	{
+		1
+		{
+			"name" "box_roundtime"
+			"text" "Round Time"
+			"type" "Numeric"
+			"default" "60"
+		}
+
+		2
+		{
+			"name" "box_downtime"
+			"text" "Downtime"
+			"type" "Numeric"
+			"default" "10"
+		}
+
+		3
+		{
+			"name" "box_health"
+			"text" "Health"
+			"type" "Numeric"
+			"default" "100"
+		}
+	}
+}
