@@ -151,3 +151,6 @@ function ENT:OnEntityCopyTableFinish(data)
 
 	data.connections = nil
 end
+
+if SERVER then return end
+language.Add("popc_laser","Laser")

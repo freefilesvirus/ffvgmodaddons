@@ -39,3 +39,6 @@ function ENT:extraPop()
 		self:Remove()
 	end)
 end
+
+if SERVER then return end
+language.Add("popc_bomb","Bomb")

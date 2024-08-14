@@ -78,3 +78,6 @@ function ENT:Think()
 end
 
 function ENT:extraPop() self.lastShoot = CurTime() end
+
+if SERVER then return end
+language.Add("popc_turret","Turret")
