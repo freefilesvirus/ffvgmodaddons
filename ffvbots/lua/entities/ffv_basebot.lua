@@ -26,10 +26,21 @@ function ENT:Initialize()
 	self:extraInit()
 end
 
+ENT.dead=false
 function ENT:OnTakeDamage(dmg)
 	self:EmitSound("weapons/stunstick/spark"..math.random(3)..".wav")
 	self:SetHealth(self:Health()-dmg:GetDamage())
-	if (self:Health()<1) then
+	if ((self:Health()<1) and (not self.dead)) then
+		self.dead=true
+		
+		local attacker=dmg:GetAttacker()
+		if (not IsValid(attacker)) then return end
+		local inflictor=dmg:GetInflictor()
+		if (not IsValid(inflictor)) then inflictor=attacker end
+
+		gamemode.Call("SendDeathNotice",attacker:IsPlayer() and attacker or ("#"..attacker:GetClass()),
+			(inflictor:IsPlayer() or (inflictor:IsNPC() and (not inflictor.isffvrobot))) and inflictor:GetActiveWeapon():GetClass() or inflictor:GetClass(),
+			self.PrintName,(self.friendly and 1 or 0)+((attacker:IsNPC() and (attacker:Classify()<=3)) and 2 or 0))
 		self:pop()
 		return
 	end
@@ -155,7 +166,27 @@ function ENT:makeLight(lamp,offset)
 	return light
 end
 
+function ENT:deathNotice(attacker,inflictor)
+	net.Start("DeathNoticeEvent")
+		if isstring(attacker) then
+			net.WriteUInt(1,2)
+			net.WriteString(attacker)
+		else
+			net.WriteUInt(2,2)
+			net.WriteEntity(attacker)
+		end
+		net.WriteString(inflictor)
+		net.WriteUInt(1,2)
+		net.WriteString(self.PrintName)
+		net.WriteUInt(((not self.willFight) or self.friendly) and 1 or 0,8)
+	net.Broadcast()
+end
+
+ENT.popped=false
 function ENT:pop()
+	if self.popped then return end
+	self.popped=true
+	
 	self:prePop()
 	local makeUndo = false
 	local undoPly = nil
@@ -242,7 +273,7 @@ function ENT:fixRelationships()
 				v:AddEntityRelationship(self,D_LI,5)
 			else
 				v:AddEntityRelationship(self,D_HT,5)
-				v:SetEnemy( self )
+				v:SetEnemy(self)
 			end
 		end
 	end
@@ -251,7 +282,7 @@ end
 function ENT:getFriendly(ent)
 	if (not (ent:IsPlayer() or ent:IsNPC())) then return false end
 	if ent.isffvrobot then
-		return (self.friendly and ent.friendly)
+		return (self.friendly==ent.friendly)
 	end
 	if self.friendly then return (ent:IsPlayer() or (ent:Classify()<=3))
 	else return (not (ent:IsPlayer() or (ent:Classify()<=3))) end
@@ -350,13 +381,19 @@ end
 function weightedRandom(chances)
 	--table format: {chance,chance,chance}
 	--example {5,1} has a 5/6 chance of returning 1 and 1/6 chance of returning 2
-	local drawTable = {}
+
+	local totalChances=0
+	for k,v in pairs(chances) do totalChances=(totalChances+v) end
+	
+	local decision=math.Rand(1,totalChances)
+	local tested=0
 	for k,v in pairs(chances) do
-		for i=1,v do
-			table.insert(drawTable,k)
-		end
+		if ((tested+v)<=decision) then return k end
+
+		tested=(tested+v)
 	end
-	return drawTable[math.random(#drawTable)]
+
+	return #chances
 end
 
 function getRotated(vec,ang)
@@ -539,9 +576,9 @@ properties.Add( "popffvrobot", {
 	end,
 
 	Receive = function( self, length, ply )
-
-		net.ReadEntity():pop()
-
+		local bot=net.ReadEntity()
+		bot:deathNotice("","")
+		bot:pop()
 	end
 
 } )

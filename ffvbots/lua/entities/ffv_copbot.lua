@@ -61,7 +61,7 @@ function ENT:delayedThink()
 			end
 		end
 	end
-	if (((not IsValid(self.target)) and randomChance(2)) or (hostile and (self.state~=2))) then self.target = candidates[weightedRandom(rank)] end
+	if (hostile and (self.state~=2)) then self.target = candidates[weightedRandom(rank)] end
 
 	local oldState = self.state
 	if IsValid(self.target) then
@@ -333,8 +333,7 @@ end
 
 function ENT:lookTargetInterest(ent)
 	if ((ent:GetClass()=="ffv_hoardbot") and IsValid(ent.rope)) then return 99 end
-	if ((ent:IsPlayer() and (cvars.Number("ai_ignoreplayers")==0)) or ent.isffvrobot) then return 1 end
-	if ent:IsNPC() then
+	if (ent:IsNPC() or ent:IsPlayer()) then
 		if (self:getFriendly(ent)) then return 1
 		else return 99 end
 	end

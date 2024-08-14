@@ -1,7 +1,7 @@
 AddCSLuaFile()
 ENT.Base = "base_gmodentity"
 ENT.Type = "anim"
-ENT.Spawnable = true
+ENT.Spawnable = false
 
 function ENT:Draw()
 	local mat = Matrix()

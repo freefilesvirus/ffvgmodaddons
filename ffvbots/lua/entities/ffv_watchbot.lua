@@ -11,6 +11,8 @@ ENT.forward = 1
 ENT.goalAngle = false
 ENT.moveSpeed = 6.5
 
+local pictureChance=CreateConVar("ffvbot_takepicturechance_onein",20)
+
 function ENT:delayedThink()
 	local size = self.lookVarSize
 	if randomChance(2) then self.lookVar:Random(-size,size) end
@@ -206,7 +208,9 @@ function ENT:movement(pos)
 	if (self:GetPos():DistToSqr(self.goalPos)<10000) then
 		self.goalPos = false
 		--chance to screenshot
-		if randomChance(20) then self:screenshot() end
+		local num=math.Clamp(pictureChance:GetInt(),0,math.huge)
+		pictureChance:SetInt(num)
+		if randomChance(num) then self:screenshot() end
 	else
 		--face target area before moving
 		local targetAngle = (pos-self:GetPos()):Angle()
@@ -304,8 +308,13 @@ function ENT:screenshot()
 	if randomChance(2) then filename = filename.."."..mapname end
 	if self.target then
 		local name = "thing"
-		if (self.target:GetClass()=="ffv_watchbot") then name = "franklin" end
-		if (self.target:GetClass()=="ffv_hoardbot") then name = "thief" end
+		if (self.target:GetClass()=="ffv_watchbot") then name="franklin" end
+		if (self.target:GetClass()=="ffv_hoardbot") then name="thief" end
+		if (self.target:GetClass()=="ffv_copbot") then name="johnny" end
+		if string.StartsWith(self.target:GetClass(),"ffv_corpse") then name="hunk" end
+		if (self.target:GetClass()=="ffv_sawbot") then name="asshole" end
+		if (self.target:GetClass()=="ffv_skaterbot") then name="asshole" end
+
 		if self.target:IsPlayer() then
 			if randomChance(4) then name = "friend"
 			else name = self.target:GetName() end
@@ -381,7 +390,7 @@ list.Set("NPC","ffv_watchbot",{
 	Category = "Robots"
 })
 
-CreateClientConVar("bot_savepictures","1",true,true)
+CreateClientConVar("ffvbot_savepictures","1",true,true)
 
 if CLIENT then language.Add("ffv_watchbot","Watching Bot") end
 if SERVER then
