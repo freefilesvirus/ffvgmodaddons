@@ -60,6 +60,7 @@ end
 
 function TOOL:validEnt(ent)
 	if (ent:IsWorld() or ent:IsPlayer() or (ent:GetClass()=="ffv_packbox")) then return false end
+	if CLIENT then return true end
 
 	local cents = {}
 	local cons = {}
