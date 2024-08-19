@@ -38,10 +38,10 @@ function ENT:OnTakeDamage(dmg)
 		local inflictor=dmg:GetInflictor()
 		if (not IsValid(inflictor)) then inflictor=attacker end
 
-		gamemode.Call("SendDeathNotice",attacker:IsPlayer() and attacker or ("#"..attacker:GetClass()),
-			(inflictor:IsPlayer() or (inflictor:IsNPC() and (not inflictor.isffvrobot))) and inflictor:GetActiveWeapon():GetClass() or inflictor:GetClass(),
-			self.PrintName,(self.friendly and 1 or 0)+((attacker:IsNPC() and (attacker:Classify()<=3)) and 2 or 0))
 		self:pop()
+		gamemode.Call("SendDeathNotice",attacker:IsPlayer() and attacker or ("#"..attacker:GetClass()),
+			(inflictor:IsPlayer() or (inflictor:IsNPC() and IsValid(inflictor:GetActiveWeapon()))) and inflictor:GetActiveWeapon():GetClass() or inflictor:GetClass(),
+			self.PrintName,((attacker:IsNPC() and (attacker:Classify()<=3)) and 2 or 0))
 		return
 	end
 	self:extraTakeDamage(dmg)

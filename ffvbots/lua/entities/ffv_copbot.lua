@@ -333,6 +333,7 @@ end
 
 function ENT:lookTargetInterest(ent)
 	if ((ent:GetClass()=="ffv_hoardbot") and IsValid(ent.rope)) then return 99 end
+	if (ent:IsPlayer() and (not (ent:Alive() and (cvars.Number("ai_ignoreplayers")==0)))) then return 0 end
 	if (ent:IsNPC() or ent:IsPlayer()) then
 		if (self:getFriendly(ent)) then return 1
 		else return 99 end

@@ -43,13 +43,14 @@ function ENT:delayedThink()
 			local chances = {}
 			for k,v in ipairs(ents.FindInSphere(self:GetPos(),1600)) do
 				if (lineOfSight(self.parts[15],v,-.2) and ((v:IsPlayer() or (v:IsNPC() or v:IsNextBot())) and (not self:getFriendly(v)))) then
-					table.insert(candidates,v)
-					table.insert(chances,self:getInterest(v))
+					local interest=self:getInterest(v)
+					if (interest>0) then
+						table.insert(candidates,v)
+						table.insert(chances,self:getInterest(v))
+					end
 				end
 			end
-			if (#candidates>0) then
-				self.target = candidates[weightedRandom(chances)]
-			end
+			if (#candidates>0) then self.target = candidates[weightedRandom(chances)] end
 		else
 			local trace = util.TraceLine({
 				start=self:GetPos(),
@@ -274,14 +275,15 @@ function ENT:hit(ent,pos,normal,tracehit)
 			local candidates = {}
 			local chances = {}
 			for k,v in ipairs(ents.FindInSphere(self:GetPos(),1600)) do
-				if (lineOfSight(self.parts[15],v,-.2) and ((v:IsPlayer() or (v:IsNPC() or v:IsNextBot())) and (not self:getFriendly(v)))) then
-					table.insert(candidates,v)
-					table.insert(chances,self:getInterest(v))
+				if (lineOfSight(self.parts[15],v,-.2) and ((v:IsPlayer() or v:IsNPC() or v:IsNextBot()) and (not self:getFriendly(v)))) then
+					local interest=self:getInterest(v)
+					if (interest>0) then
+						table.insert(candidates,v)
+						table.insert(chances,interest)
+					end
 				end
 			end
-			if (#candidates>0) then
-				self.target = candidates[weightedRandom(chances)]
-			end
+			if (#candidates>0) then self.target = candidates[weightedRandom(chances)] end
 			self.state = 0
 		end
 	else
