@@ -119,8 +119,6 @@ function buildGui()
 		if (#string.Replace(str," ","")==0) then return end
 		str = string.Replace(str,"\"","'")
 		--couldnt trust people to be civil!
-		str = string.Replace(str,"nigger","fool")
-		str = string.Replace(str,"nigga","fool")
 		--hello all reading this. if you wouldntve realized this code is vulnerable, dont read the rest of the comment so i dont give ya any ideas. im aware that this is incredibly easy to exploit and i dont know how to fix it without either being really intrusive or forcing people to sign in through steam, but thatd be a lot of hassle for something thats meant to be easy to use. i ask please dont ruin the fun for everyone else by abusing it
 		http.Post("https://wthanpy.pythonanywhere.com/",
 			{message=str,
