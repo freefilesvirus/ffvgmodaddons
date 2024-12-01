@@ -94,6 +94,22 @@ if SERVER then
 	return
 end
 
+concommand.Add("pn_ping",function(ply,cmd,args)
+	if (#args==0) then
+		print("include a map!")
+		return
+	end
+	local map=args[1]
+	print("looking for notes in "..map.."...")
+
+	http.Post("https://wthanpy.pythonanywhere.com/",
+	{getnotes="yes",
+	map=map},
+	function(body)
+		print("found "..select(2,body:gsub("\n","\n")).." notes in "..map)
+	end)
+end)
+
 --build gui
 local buildnoteframe = nil
 local buildmessage = nil
