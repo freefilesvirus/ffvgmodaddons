@@ -22,10 +22,22 @@ function ENT:Initialize()
 	self:SetUseType(SIMPLE_USE)
 
 	self:SetNWString("message",self.message)
-	self:SetNWBool("vanity",self.steamid=="76561198169249882")
+	--self:SetNWColor("vanity",self.steamid=="76561198169249882")
 
 	self:GetPhysicsObject():EnableCollisions(false)
 	self:SetCustomCollisionCheck(true)
+
+	self:SetNWInt("r",255)
+	self:SetNWInt("g",255)
+	self:SetNWInt("b",255)
+	for k,v in pairs(pnColorTable) do
+		if (v[2]==self.steamid) then
+			self:SetNWInt("r",v[1].r)
+			self:SetNWInt("g",v[1].g)
+			self:SetNWInt("b",v[1].b)
+			return
+		end
+	end
 end
 
 function ENT:Use(ply)
@@ -45,9 +57,9 @@ hook.Add("PostDrawOpaqueRenderables","ffvplayernotetext",function()
 				surface.SetFont("Default")
 				local w,h = surface.GetTextSize(v:GetNWString("message"))
 				draw.RoundedBox(8,-w/2,-h/2,w,h,Color(0,0,0,128))
-				local color = Color(255,255,255,255)
-				if v:GetNWBool("vanity") then color = Color(255,234,124,255) end
-				draw.SimpleText(v:GetNWString("message"),"Default",0,0,color,TEXT_ALIGN_CENTER,TEXT_ALIGN_CENTER)
+				--local color = Color(255,255,255,255)
+				--if v:GetNWBool("vanity") then color = Color(255,234,124,255) end
+				draw.SimpleText(v:GetNWString("message"),"Default",0,0,Color(v:GetNWInt("r"),v:GetNWInt("g"),v:GetNWInt("b"),255),TEXT_ALIGN_CENTER,TEXT_ALIGN_CENTER)
 			cam.End3D2D()
 		end
 	end
