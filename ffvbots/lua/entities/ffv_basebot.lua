@@ -381,14 +381,14 @@ end
 function weightedRandom(chances)
 	--table format: {chance,chance,chance}
 	--example {5,1} has a 5/6 chance of returning 1 and 1/6 chance of returning 2
-
+	
 	local totalChances=0
 	for k,v in pairs(chances) do totalChances=(totalChances+v) end
 	
 	local decision=math.Rand(1,totalChances)
 	local tested=0
 	for k,v in pairs(chances) do
-		if ((tested+v)<=decision) then return k end
+		if ((tested+v)>=decision) then return k end
 
 		tested=(tested+v)
 	end

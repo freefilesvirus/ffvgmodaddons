@@ -4,7 +4,7 @@ ENT.Base = "ffv_basebot"
 ENT.PrintName = "Cop Bot"
 ENT.Spawnable = false
 
-ENT.maxHealth = 200
+ENT.maxHealth = 300
 ENT.willFight = true
 ENT.friendly = true
 
@@ -61,7 +61,7 @@ function ENT:delayedThink()
 			end
 		end
 	end
-	if (hostile and (self.state~=2)) then self.target = candidates[weightedRandom(rank)] end
+	if (self.state~=2) then self.target = candidates[weightedRandom(rank)] end
 
 	local oldState = self.state
 	if IsValid(self.target) then
@@ -229,8 +229,8 @@ function ENT:tickThink()
 			local firepos = self.parts[3]:GetPos()+(self:GetForward()*24)
 			self:FireBullets({
 				Attacker=self,
-				Damage=4,
-				Num=6,
+				Damage=10,
+				Num=8,
 				Spread=Vector(6,6,0),
 				Src=firepos,
 				Dir=self.target:WorldSpaceCenter()-firepos
@@ -262,7 +262,7 @@ end
 function ENT:extraTakeDamage(dmg)
 	if (self.state~=2) then
 		self.target = dmg:GetAttacker()
-		self.state = 4
+		self.state=(self:getFriendly(dmg:GetAttacker()) and 3 or 2)
 	end
 end
 
@@ -275,6 +275,17 @@ function ENT:PhysicsCollide(data,phys)
 	if (((not ent:IsWorld()) and (self.state~=2)) and (data.TheirOldVelocity:Length()>100)) then self.target = ent end
 
 	self.jumping = false
+end
+
+function ENT:pop()
+	for k=3,7 do self.parts[k]:SetModelScale(.09) end
+	local fakeGun=self.parts[3]
+	local gun=ents.Create("ffv_copgun")
+	gun:SetPos(fakeGun:GetPos())
+	gun:SetAngles(fakeGun:GetAngles())
+	gun:Spawn()
+
+	self.BaseClass.pop(self)
 end
 
 function ENT:movement(pos)

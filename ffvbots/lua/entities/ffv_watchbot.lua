@@ -345,7 +345,7 @@ function ENT:screenshot()
 	--get players
 	local plys = {}
 	for k,v in ipairs(player.GetAll()) do
-		if (v:GetInfoNum("bot_savepictures",0)==1) then table.insert(plys,v) end
+		if (v:GetInfoNum("ffvbot_savepictures",0)==1) then table.insert(plys,v) end
 	end
 	--tell client to save
 	net.Start("watchbotPicture")
