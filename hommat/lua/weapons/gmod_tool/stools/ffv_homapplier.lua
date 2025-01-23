@@ -36,7 +36,7 @@ function TOOL:networkUpdatedTable()
 	
 	local relevant={}
 	for _,e in ents.Iterator() do
-		if e:GetNWBool("ffv_homed") then table.insert(relevant,e) end
+		if (e:GetNWBool("ffv_homed") and IsValid(e)) then table.insert(relevant,e) end
 	end
 
 	net.Start("ffvHOMTable")
