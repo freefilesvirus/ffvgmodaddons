@@ -1,8 +1,4 @@
-pnColorTable={
-	{Color(255,255,255,255),""},
-	{Color(255,234,124,255),"76561198169249882"},
-	{Color(209,11,110,255),"76561199207998399"}
-}
+pnColorTable={{Color(255,255,255,255),""}}
 
 if SERVER then
 	local numNotes = -1
@@ -21,7 +17,19 @@ if SERVER then
 		note:SetAngles(net.ReadAngle())
 	end)
 
-	local maxNotes = CreateConVar("pn_maxnotes","1000")
+	local maxNotes = CreateConVar("pn_maxnotes","500")
+
+	http.Post("https://wthanpy.pythonanywhere.com/",{getcolor="yes"},
+		function(body)
+			for k,v in ipairs({"[","]","\""}) do body=string.Replace(body,v,"") end
+			body=string.Replace(body,", ",",")
+
+			pnColorTable={{Color(255,255,255,255),""}}
+			for k,v in ipairs(string.Split(body,",")) do
+				local split=string.Split(v," ")
+				table.insert(pnColorTable,{Color(tonumber(split[1]),tonumber(split[2]),tonumber(split[3])),split[4]})
+			end
+		end)
 
 	function spawnPlayerNotes(refresh)
 		http.Post("https://wthanpy.pythonanywhere.com/",
@@ -30,31 +38,20 @@ if SERVER then
 			function(body)
 				body = string.Replace(body,"\\","")
 
-				playernotes = ents.FindByClass("ffv_playernote")
+				local notes=string.Split(body,"\n")
 
-				if (refresh and ((#playernotes==(#string.Split(body,"\n")-1)) or (maxNotes:GetInt()<=#playernotes))) then return end
-				numNotes = #string.Split(body,"\n")
-
-				for k,v in ipairs(playernotes) do
+				for k,v in ipairs(ents.FindByClass("ffv_playernote")) do
 					v:Remove()
 				end
 
-				for k,v in pairs(string.Split(body,"\n")) do
-					if (k==#string.Split(body,"\n")) then
-						if (not refresh) then print((#string.Split(body,"\n")-1).." player notes loaded") end
-						return
-					end
-
-					if (k>=maxNotes:GetInt()) then
-						print("hit note limit! increase with pn_maxnotes")
-						print(k.." player notes loaded, "..(#string.Split(body,"\n")-1-k).." notes ignored")
-						return
-					end
-					
+				local numToLoad=math.Clamp(maxNotes:GetInt(),0,#notes-1)
+				for k=1,numToLoad do
+					local picked=math.random(#notes)
 					local dict = {}
-					for key, value in string.gmatch(v,'"([^"]+)":%s*"([^"]+)"') do
+					for key, value in string.gmatch(notes[picked],'"([^"]+)":%s*"([^"]+)"') do
 						dict[key] = value
 					end
+					table.remove(notes,picked)
 
 					local note = ents.Create("ffv_playernote")
 					note.message = dict.message
@@ -65,6 +62,9 @@ if SERVER then
 					note:SetPos(util.StringToType(dict.pos,"Vector"))
 					note:SetAngles(util.StringToType(dict.ang,"Angle"))
 				end
+
+				print(numToLoad.." player notes loaded")
+				if (maxNotes:GetInt()<(#notes-1)) then print((#notes-maxNotes:GetInt()-1).." were left out! increase the amount of notes with pn_maxnotes") end
 			end,
 			function(message)
 				if (not refresh) then
@@ -74,8 +74,6 @@ if SERVER then
 			end)
 	end
 	spawnPlayerNotes()
-	local autorefresh = CreateConVar("pn_autorefresh","0")
-
 	concommand.Add("pn_refresh",spawnPlayerNotes)
 	hook.Add("PostCleanupMap","ffvcleanuprespawnnotes",function()
 		spawnPlayerNotes(true)
@@ -84,8 +82,6 @@ if SERVER then
 	concommand.Add("pn_notecount",function()
 		print(#ents.FindByClass("ffv_playernote"))
 	end)
-
-	timer.Create("ffvcheckfornewnotes",6,0,function() if autorefresh:GetBool() then spawnPlayerNotes(true) end end)
 
 	hook.Add("PhysgunPickup","ffvnophysgunnotes",function(ply,ent)
 		if (ent:GetClass()=="ffv_playernote") then return false end
@@ -145,7 +141,6 @@ function buildGui()
 			{message=str,
 			name=LocalPlayer():Nick(),
 			steamid=tostring(LocalPlayer():SteamID64()),
-			time=tostring(os.time()),
 			pos=tostring(LocalPlayer():GetPos()+Vector(0,0,32)),
 			ang=tostring(Angle(0,LocalPlayer():EyeAngles().y,0)),
 			map=game.GetMap()},
