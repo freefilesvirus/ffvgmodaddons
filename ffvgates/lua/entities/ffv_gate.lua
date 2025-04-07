@@ -51,7 +51,7 @@ end
 function ENT:OnDuplicated(data) self:Initialize() end
 
 function ENT:TriggerInput(name,val)
-	if (name=="open") then self:toggle(val>0)
+	if (name=="open") then self:setOpen(val>0)
 	elseif (name=="speed") then self.speed=val end
 end
 
