@@ -10,6 +10,8 @@ ENT.x=0
 ENT.y=0
 ENT.width=8
 
+ENT.shake=true
+
 ENT.sound=-1
 
 ENT.moving=0
@@ -56,6 +58,8 @@ function ENT:TriggerInput(name,val)
 end
 
 function ENT:setOpen(open)
+	if (self.open==open) then return end
+
 	self.open=open
 
 	self.moving=sign((self.open and (self.closed.z+self.y) or self.closed.z)-self:GetPos().z)
@@ -83,11 +87,11 @@ function ENT:Think()
 	if (self.moving~=0) then
 		local goal=(self.open and (self.closed.z+self.y) or self.closed.z)
 		
-		self.vel=math.min(self.vel+.02,4)
+		self.vel=math.min(self.vel+.01,1)
 		self:SetPos(self:GetPos()+Vector(0,0,self.vel*self.moving*math.max(.1,self.speed)))
 
 		if (sign(goal-self:GetPos().z)~=self.moving) then
-			self:SetNWFloat("slam",CurTime())
+			if self.shake then self:SetNWFloat("slam",CurTime()) end
 
 			self.moving=0
 			self:SetPos(Vector(self:GetPos().x,self:GetPos().y,goal))
@@ -134,6 +138,7 @@ function ENT:Draw()
 	local v=Vector(0,0,math.sin(since*48)*math.abs(math.min(.8,since)-.8)*1)
 	v:Rotate(self:GetAngles())
 	self:SetPos(Vector(self.closed.x,self.closed.y,self:GetPos().z)+v)
+
 	self:DrawModel()
 end
 

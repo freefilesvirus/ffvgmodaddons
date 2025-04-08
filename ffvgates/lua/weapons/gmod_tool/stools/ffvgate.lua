@@ -20,6 +20,7 @@ if CLIENT then
 	language.Add("tool.ffvgate.confirm","confirm shape")
 	language.Add("tool.ffvgate.reset","reset")
 
+	TOOL.ClientConVar["shake"]=1
 	TOOL.ClientConVar["movesound"]="doors/garage_move1.wav"
 	TOOL.ClientConVar["stopsound"]="doors/heavy_metal_stop1.wav"
 	TOOL.ClientConVar["mat"]="phoenix_storms/dome"
@@ -204,6 +205,7 @@ function TOOL:LeftClick(trace,stage)
 			gate.y=math.abs((self:GetPos(0)-self:GetPos(1)):Length())
 			gate.width=self:GetClientNumber("width")
 			gate.speed=self:GetClientNumber("speed")
+			gate.shake=self:GetClientBool("shake")
 
 			local moveSound=self:GetClientInfo("movesound")
 			if (moveSound~="") then gate.moveSound=Sound(moveSound) end
@@ -255,6 +257,8 @@ function TOOL.BuildCPanel(cpanel)
 
 	cpanel:KeyBinder("button","ffvgate_key")
 	cpanel:CheckBox("toggle","ffvgate_toggle")
+
+	cpanel:CheckBox("shake","ffvgate_shake")
 
 	cpanel:NumSlider("speed","ffvgate_speed",.1,200)
 
