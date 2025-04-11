@@ -117,8 +117,7 @@ function TOOL:LeftClick(trace)
 
 	if (stage==0) then
 		if trace.HitSky then
-			
-
+			self:fail("gate must be built on something solid!")
 			return false
 		end
 
@@ -132,14 +131,14 @@ function TOOL:LeftClick(trace)
 			return false
 		end
 
+		for k,t in pairs({trace,tr}) do self:SetObject(k-1,Entity(0),t.HitPos,0,0,t.HitNormal) end
+
 		if SERVER then
 			net.Start("ffvgate_info")
 	 		net.WriteInt(0,3)
 	 		net.WriteVector(tr.HitPos)
 	 		net.WriteVector(trace.HitPos)
 			net.Send(self:GetOwner())
-
-			for k,t in pairs({trace,tr}) do self:SetObject(k-1,Entity(0),t.HitPos,0,0,t.HitNormal) end
 		end
 	elseif (stage==1) then
 		if (math.abs(self:GetNormal(0):Dot(trace.HitNormal))==1) then
@@ -193,6 +192,8 @@ function TOOL:LeftClick(trace)
 end
 
 function TOOL:fail(reason)
+	if CLIENT then return end
+
 	net.Start("ffvgate_fail")
 	net.WriteString(reason)
 	net.Send(self:GetOwner())

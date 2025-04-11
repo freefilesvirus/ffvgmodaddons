@@ -82,7 +82,7 @@ function ENT:Think()
 				self:StopLoopingSound(self.sound)
 				self.sound=-1
 			end
-			if (self.stopSound~=nil) then self:EmitSound(self.stopSound) end
+			if (self.stopSound~=nil) then EmitSound(self.stopSound,self.closed) end
 
 			self:SetPos(goal)
 
