@@ -3,20 +3,16 @@ TOOL.Name="#tool.ffvgate.name"
 
 if CLIENT then
 	TOOL.Information={
-		{name="bottom",icon="gui/lmb.png",stage=0},
-		{name="auto",icon="gui/rmb.png",stage=0},
-		{name="top",icon="gui/lmb.png",stage=1},
-		{name="side",icon="gui/lmb.png",stage=2},
-		{name="confirm",icon="gui/lmb.png",stage=3},
+		{name="pos1",icon="gui/lmb.png",stage=0},
+		{name="pos2",icon="gui/lmb.png",stage=1},
+		{name="confirm",icon="gui/lmb.png",stage=2},
 		{name="reset",icon="gui/r.png",op=1}
 	}
 
 	language.Add("tool.ffvgate.name","gate")
 	language.Add("tool.ffvgate.desc","builds gates shaped to doorways")
-	language.Add("tool.ffvgate.bottom","place the bottom")
-	language.Add("tool.ffvgate.auto","auto place")
-	language.Add("tool.ffvgate.top","place the top")
-	language.Add("tool.ffvgate.side","place a side")
+	language.Add("tool.ffvgate.pos1","set axis 1")
+	language.Add("tool.ffvgate.pos2","set axis 2")
 	language.Add("tool.ffvgate.confirm","confirm shape")
 	language.Add("tool.ffvgate.reset","reset")
 
@@ -34,203 +30,172 @@ if CLIENT then
 		surface.PlaySound("buttons/button10.wav")
 	end)
 
-	bottom=Vector(0,0,0)
-	top=Vector(0,0,0)
-	side1=Vector(0,0,0)
-	side2=Vector(0,0,0)
-	normal=Vector(1,0,0)
+	a1p1=Vector(0,0,0)
+	a1p2=Vector(0,0,0)
+	a2p1=Vector(0,0,0)
+	a2p2=Vector(0,0,0)
+	pos=Vector(0,0,0)
+	angle=Angle(0,0,0)
 	x=0
 	y=0
 	net.Receive("ffvgate_info",function(len,ply)
 		local type=net.ReadInt(3)
 		if (type==0) then
-			bottom=net.ReadVector()
+			a1p1=net.ReadVector()
+			a1p2=net.ReadVector()
 		elseif (type==1) then
-			top=net.ReadVector()
-		elseif (type==2) then
-			side1=net.ReadVector()
-			side2=net.ReadVector()
-			normal=net.ReadNormal()
+			a2p1=net.ReadVector()
+			a2p2=net.ReadVector()
+			x=(a2p1-a2p2):Length()
+			y=(a1p1-a1p2):Length()
+			pos=((a2p1+a2p2)/2)
+			angle=net.ReadAngle()
+		end
+	end)
 
-			x=(side1-side2):Length()
-			y=(top-bottom):Length()
+	hook.Add("PostDrawTranslucentRenderables","ffvgate_preview",function()
+		local weapon=LocalPlayer():GetActiveWeapon()
+		if !(IsValid(weapon) and (weapon:GetClass()=="gmod_tool") and (weapon:GetMode()=="ffvgate")) then return end
+
+		local stage=weapon:GetStage()
+		if (stage==1) then render.DrawLine(a1p1,a1p2)
+		elseif (stage==2) then
+			local maxs=(Vector(x,GetConVar("ffvgate_width"):GetFloat(),y)/2)
+			render.DrawWireframeBox(pos,angle,-maxs,maxs)
 		end
 	end)
 else
 	util.AddNetworkString("ffvgate_fail")
 	util.AddNetworkString("ffvgate_info")
-end
 
-function TOOL:RightClick(trace)
-	if (self:GetStage()>0) then return end
+	function makeGate(ply,pos,ang,mat,key,x,y,width,speed,shake,moveSound,stopSound,toggle,isOpen,open,closed,dir)
+		local gate=ents.Create("ffv_gate")
+		gate:SetPos(pos)
+		gate:SetAngles(ang)
+		gate:SetMaterial(mat)
+		gate.mat=mat
+		gate.x=x
+		gate.y=y
+		gate.width=width
+		gate.speed=speed
+		gate.shake=shake
 
-	if !(self:LeftClick(trace)) then
-		self:Deploy()
-		return
-	end
+		gate.ply=ply
 
-	local tr=util.TraceLine({
-		start=trace.HitPos,
-		endpos=trace.HitPos+Vector(0,0,999),
-		collisiongroup=COLLISION_GROUP_WORLD
-	})
-	if !(self:LeftClick(tr,1)) then
-		self:Deploy()
-		return
-	end
-	
-	local aimVec=self:GetOwner():GetAimVector()
-	local tr2=util.TraceLine({
-		start=trace.HitPos+Vector(0,0,1),
-		endpos=trace.HitPos+Vector(0,0,1)+(Vector(aimVec.x,aimVec.y,0):Angle():Right()*999),
-		collisiongroup=COLLISION_GROUP_WORLD
-	})
-	if !(self:LeftClick(tr2,2)) then
-		self:Deploy()
-		return
-	end
+		if (moveSound~="") then gate.moveSound=Sound(moveSound) end
+		if (stopSound~="") then gate.stopSound=Sound(stopSound) end
 
-	return true
-end
 
-function TOOL:LeftClick(trace,stage)
-	if (stage==nil) then stage=self:GetStage() end
-	if !(trace.Hit) then return false end
-
-	if ((stage<2) and (math.abs(trace.HitNormal.z)<.5)) then
-		if SERVER then
-			net.Start("ffvgate_fail")
-			net.WriteString(((stage==0) and "bottom" or "top").." cant be on a wall!")
-			net.Send(self:GetOwner())
+		if (isOpen==nil) then
+			isOpen=false
+			closed=pos
+			open=(pos+(ang:Up()*(y-4)))
+			dir=(open-closed):GetNormalized()
 		end
+		gate.isOpen=isOpen
+		gate.closed=closed
+		gate.open=open
+		gate.dir=dir
 
-		return false
+		gate:Spawn()
+
+		gate.key=key
+		gate.toggle=toggle
+		numpad.OnDown(ply,key,"ffvgate_toggle",gate)
+		if !(toggle) then numpad.OnUp(ply,key,"ffvgate_toggle",gate) end
+
+		return gate
 	end
+	duplicator.RegisterEntityClass("ffv_gate",makeGate,"Pos","Ang","mat","key","x","y","width","speed","shake","moveSound","stopSound","toggle",
+		"isOpen","open","closed","dir")
+end
+
+local maxSize=CreateConVar("ffvgate_max_size",9999)
+
+function TOOL:LeftClick(trace)
+	local stage=self:GetStage()
 
 	if (stage==0) then
-		self:SetObject(0,Entity(0),trace.HitPos,0,0,trace.HitNormal)
-		if SERVER then
-			net.Start("ffvgate_info")
-			net.WriteInt(0,3)
-			net.WriteVector(trace.HitPos)
-			net.Send(self:GetOwner())
-		end
-
-		self:SetOperation(1)
-		self:SetStage(1)
-	elseif (stage==1) then
-		if (trace.HitPos.z<=self:GetPos(0).z) then --fail if top isnt higher than bottom
-			if SERVER then
-				net.Start("ffvgate_fail")
-				net.WriteString("top needs to be higher than the bottom!")
-				net.Send(self:GetOwner())
-			end
-
-			return false
-		end
-
-		local bottom=self:GetPos(0)
-		self:SetObject(1,Entity(0),Vector(bottom.x,bottom.y,trace.HitPos.z),0,0,trace.HitNormal)
-		if SERVER then
-			net.Start("ffvgate_info")
-			net.WriteInt(1,3)
-			net.WriteVector(Vector(bottom.x,bottom.y,trace.HitPos.z))
-			net.Send(self:GetOwner())
-		end
-
-		self:SetStage(2)
-	elseif (stage==2) then
-		if ((trace.HitNormal==self:GetNormal(0)) or (trace.HitNormal==self:GetNormal(1))) then
-			if SERVER then
-				net.Start("ffvgate_fail")
-				net.WriteString("has to be a different wall!")
-				net.Send(self:GetOwner())
-			end
+		if trace.HitSky then
+			
 
 			return false
 		end
 
 		local tr=util.TraceLine({
 			start=trace.HitPos,
-			endpos=(trace.HitPos+(trace.HitNormal*9999)),
-			collisiongroup=COLLISION_GROUP_WORLD
+			endpos=(trace.HitPos+(trace.HitNormal*maxSize:GetFloat())),
 		})
-		if !(tr.Hit) then --no opposing wall
-			if SERVER then
-				net.Start("ffvgate_fail")
-				net.WriteString("cant find opposing side!")
-				net.Send(self:GetOwner())
-			end
 
+		if (!(tr.Hit) or tr.HitSky) then
+			self:fail("cant find opposing side!")
 			return false
-		else
-			local s1=self:squishVector(trace.HitPos,self:GetPos(0),trace.HitNormal)
-			local s2=self:squishVector(tr.HitPos,self:GetPos(0),trace.HitNormal)
-			s1.z=((self:GetPos(1).z+self:GetPos(0).z)/2)
-			s2.z=((self:GetPos(1).z+self:GetPos(0).z)/2)
-			self:SetObject(2,Entity(0),s1,0,0,trace.HitNormal)
-			self:SetObject(3,Entity(0),s2,0,0,tr.HitNormal)
-
-			local bottom=((s1+s2)/2)
-			bottom.z=self:GetPos(0).z
-			self:SetObject(0,Entity(0),bottom,0,0,self:GetNormal(0))
-			self:SetObject(1,Entity(0),Vector(bottom.x,bottom.y,self:GetPos(1).z),0,0,self:GetNormal(1))
-
-			if SERVER then
-				net.Start("ffvgate_info")
-				net.WriteInt(0,3)
-				net.WriteVector(bottom)
-				net.Send(self:GetOwner())
-				net.Start("ffvgate_info")
-				net.WriteInt(1,3)
-				net.WriteVector(self:GetPos(1))
-				net.Send(self:GetOwner())
-				net.Start("ffvgate_info")
-				net.WriteInt(2,3)
-				net.WriteVector(s1)
-				net.WriteVector(s2)
-				net.WriteNormal(self:GetNormal(2))
-				net.Send(self:GetOwner())
-			end
 		end
 
-		self:SetStage(3)
-	elseif (stage==3) then
 		if SERVER then
-			local gate=ents.Create("ffv_gate")
-			gate:SetPos((self:GetPos(0)+self:GetPos(1))/2)
-			gate:SetMaterial(self:GetClientInfo("mat"))
-			gate:SetAngles(self:GetNormal(2):Angle()+Angle(90,90,0))
-			gate.x=math.abs((self:GetPos(2)-self:GetPos(3)):Length())
-			gate.y=math.abs((self:GetPos(0)-self:GetPos(1)):Length())
-			gate.width=self:GetClientNumber("width")
-			gate.speed=self:GetClientNumber("speed")
-			gate.shake=self:GetClientBool("shake")
+			net.Start("ffvgate_info")
+	 		net.WriteInt(0,3)
+	 		net.WriteVector(tr.HitPos)
+	 		net.WriteVector(trace.HitPos)
+			net.Send(self:GetOwner())
 
-			local moveSound=self:GetClientInfo("movesound")
-			if (moveSound~="") then gate.moveSound=Sound(moveSound) end
-			local stopSound=self:GetClientInfo("stopsound")
-			if (stopSound~="") then gate.stopSound=Sound(stopSound) end
-
-			gate:Spawn()
-
-			numpad.OnDown(self:GetOwner(),self:GetClientNumber("key"),"ffvgate_toggle",gate)
-			if !(self:GetClientBool("toggle")) then numpad.OnUp(self:GetOwner(),self:GetClientNumber("key"),"ffvgate_toggle",gate) end
-
-			undo.Create("gate")
-			undo.AddEntity(gate)
-			undo.SetPlayer(self:GetOwner())
-			undo.Finish()
+			for k,t in pairs({trace,tr}) do self:SetObject(k-1,Entity(0),t.HitPos,0,0,t.HitNormal) end
+		end
+	elseif (stage==1) then
+		if (math.abs(self:GetNormal(0):Dot(trace.HitNormal))==1) then
+			self:fail("axes need to be perpendicular!")
+			return false
 		end
 
-		self:Deploy()
+		local traces={}
+		local midPos=((self:GetPos(0)+self:GetPos(1))/2)
+		for k=-1,1,2 do
+			local tr=util.TraceLine({start=midPos,endpos=midPos+(trace.HitNormal*maxSize:GetFloat()*k)})
+			if (!(tr.Hit) or tr.HitSky) then
+				self:fail("cant find opposing side!")
+				return false
+			end
+
+			table.insert(traces,tr)
+		end
+
+		if SERVER then
+			net.Start("ffvgate_info")
+	 		net.WriteInt(1,3)
+
+	 		for k,t in pairs(traces) do
+	 			net.WriteVector(t.HitPos)
+	 			self:SetObject(k+1,Entity(0),t.HitPos,0,0,t.HitNormal)
+	 		end
+	 		net.WriteAngle(self:GetNormal(2):AngleEx(self:GetNormal(0)))
+			net.Send(self:GetOwner())
+		end
+	elseif ((stage==2) and SERVER) then
+		local gate=makeGate(self:GetOwner(),(self:GetPos(2)+self:GetPos(3))/2,self:GetNormal(2):AngleEx(self:GetNormal(0)), --ply pos ang
+			self:GetClientInfo("mat"),self:GetClientNumber("key"),math.abs((self:GetPos(2)-self:GetPos(3)):Length()), --mat key x
+			math.abs((self:GetPos(0)-self:GetPos(1)):Length()),self:GetClientNumber("width"),self:GetClientNumber("speed"), --y width speed
+			self:GetClientNumber("shake"),self:GetClientInfo("movesound"),self:GetClientInfo("stopsound"),self:GetClientBool("toggle")) --the names are right there
+
+		undo.Create("gate")
+		undo.AddEntity(gate)
+		undo.SetPlayer(self:GetOwner())
+		undo.Finish()
+	end
+
+	if (stage==0) then self:SetOperation(1) end
+	if (stage<2) then self:SetStage(stage+1)
+	else
+		self:SetStage(0)
+		self:SetOperation(0)
 	end
 
 	return true
 end
 
-function TOOL:squishVector(from,to,normal)
-	return Vector((normal.x==0) and to.x or from.x,(normal.y==0) and to.y or from.y,(normal.z==0) and to.z or from.z)
+function TOOL:fail(reason)
+	net.Start("ffvgate_fail")
+	net.WriteString(reason)
+	net.Send(self:GetOwner())
 end
 
 function TOOL:Deploy()
@@ -238,19 +203,6 @@ function TOOL:Deploy()
 	self:SetOperation(0)
 	self:SetStage(0)
 end
-
-hook.Add("PostDrawTranslucentRenderables","ffvgate_preview",function()
-	local weapon=LocalPlayer():GetActiveWeapon()
-	if !(IsValid(weapon) and (weapon:GetClass()=="gmod_tool") and (weapon:GetMode()=="ffvgate")) then return end
-
-	local stage=weapon:GetStage()
-	if (stage==2) then render.DrawLine(bottom,top)
-	elseif (stage==3) then
-		local maxs=(Vector(x,GetConVar("ffvgate_width"):GetFloat(),y)/2)
-		maxs:Rotate(normal:Angle())
-		render.DrawWireframeBox((bottom+top)/2,Angle(0,0,0),-maxs,maxs)
-	end
-end)
 
 function TOOL.BuildCPanel(cpanel)
 	cpanel:Help("#tool.ffvgate.desc")
@@ -260,11 +212,11 @@ function TOOL.BuildCPanel(cpanel)
 
 	cpanel:CheckBox("shake","ffvgate_shake")
 
-	cpanel:NumSlider("speed","ffvgate_speed",.1,200)
+	cpanel:NumSlider("speed","ffvgate_speed",.1,50)
 
 	cpanel:NumSlider("width","ffvgate_width",1,256)
 
-	cpanel:MatSelect("ffvgate_mat",{
+	cpanel:MatSelect("ffvgate_mat",{ --pheonix storms i love ya
 		"phoenix_storms/dome",
 		"models/props_interiors/metalfence007a",
 		"phoenix_storms/stripes",
@@ -273,6 +225,15 @@ function TOOL.BuildCPanel(cpanel)
 		"phoenix_storms/metalbox",
 		"phoenix_storms/metalset_1-2",
 		"models/props_pipes/Pipesystem01a_skin3",
+		"phoenix_storms/mat/mat_phx_carbonfiber",
+		"phoenix_storms/pack2/metalbox2",
+		"phoenix_storms/pack2/train_floor",
+		"phoenix_storms/trains/track_plateside",
+		"phoenix_storms/cube",
+		"phoenix_storms/futuristictrackramp_1-2",
+		"phoenix_storms/glass",
+		"phoenix_storms/side",
+		"phoenix_storms/wood_dome"
 	},true,.25,.25)
 
 	local movesound=cpanel:ComboBoxMulti("moving sound",list.Get("ffvgateMoveSounds"))

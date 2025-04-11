@@ -4,7 +4,7 @@ AddCSLuaFile()
 ENT.Base="base_anim"
 ENT.Type="anim"
 
-ENT.open=false
+ENT.isOpen=false
 
 ENT.x=0
 ENT.y=0
@@ -14,35 +14,29 @@ ENT.shake=true
 
 ENT.sound=-1
 
-ENT.moving=0
+ENT.moving=false
 ENT.speed=1
 ENT.vel=0
 ENT.closed=Vector(0,0,0)
-ENT.hullTick=0
+ENT.open=Vector(0,0,0)
+ENT.dir=Vector(0,0,0)
 
 ENT.moveSound=nil
 ENT.stopSound=nil
 
-function sign(x)
+local function sign(x)
 	return ((x==0) and 0 or ((x>0) and 1 or -1))
 end
 
 function ENT:Initialize()
-	if (self.closed==Vector(0,0,0)) then self.closed=self:GetPos() end
-
 	if CLIENT then return end
 
-	local size=math.min(math.ceil(self.y/64),8)
-	self:SetModel("models/hunter/plates/plate"..size.."x"..size..".mdl")
-
+	self:SetModel("models/hunter/blocks/cube4x4x4.mdl")
 	self:PhysicsInit(SOLID_VPHYSICS)
-	self:SetSolid(SOLID_VPHYSICS)
+	self:GetPhysicsObject():EnableMotion(false)
 
 	local min,max=self:GetModelBounds()
-	scales.Scale(self,Vector(self.y+8,self.x+8,self.width)/(max-min))
-
-	local phys=self:GetPhysicsObject()
-	if IsValid(phys) then phys:EnableMotion(false) end
+	scales.Scale(self,Vector(self.x+2,self.width,self.y+2)/(max-min))
 
 	if (WireLib~=nil) then
 		WireLib.CreateInputs(self,{"open","speed"})
@@ -50,77 +44,62 @@ function ENT:Initialize()
 	end
 end
 
-function ENT:OnDuplicated(data) self:Initialize() end
-
-function ENT:TriggerInput(name,val)
-	if (name=="open") then self:setOpen(val>0)
-	elseif (name=="speed") then self.speed=val end
-end
-
 function ENT:setOpen(open)
-	if (self.open==open) then return end
+	if (self.isOpen==open) then return end
+	self.isOpen=open
 
-	self.open=open
+	local goal=(self.isOpen and self.open or self.closed)
 
-	self.moving=sign((self.open and (self.closed.z+self.y) or self.closed.z)-self:GetPos().z)
+	self.moving=true
 	self.vel=0
-	if ((self.sound==-1) and (self.moveSound~=nil)) then
-		self.sound=self:StartLoopingSound(self.moveSound)
-
-		timer.Simple(.1,function()
-			if (self.moving==0) then
-				self:StopLoopingSound(self.sound)
-				self.sound=-1
-			end
-		end)
-	end
+	if ((self.sound==-1) and (self.moveSound~=nil)) then self.sound=self:StartLoopingSound(self.moveSound) end
 
 	if (WireLib~=nil) then
-		WireLib.TriggerOutput(self,"open",self.open and 1 or 0)
-		WireLib.TriggerOutput(self,"moving",self.moving)
+		WireLib.TriggerOutput(self,"open",self.isOpen and 1 or 0)
+		WireLib.TriggerOutput(self,"moving",1)
 	end
 end
 
 function ENT:Think()
 	if CLIENT then return end
 
-	if (self.moving~=0) then
-		local goal=(self.open and (self.closed.z+self.y) or self.closed.z)
-		
+	if self.moving then
+		local goal=(self.isOpen and self.open or self.closed)
+
 		self.vel=math.min(self.vel+.01,1)
-		self:SetPos(self:GetPos()+Vector(0,0,self.vel*self.moving*math.max(.1,self.speed)))
+		local moving=(self.isOpen and 1 or -1)
+		local to=self:GetPos()
+		for xyz=1,3 do
+			to[xyz]=(to[xyz]+(self.dir[xyz]*self.vel*self.speed*4*moving))
+		end
+		self:SetPos(to)
 
-		if (sign(goal-self:GetPos().z)~=self.moving) then
-			if self.shake then self:SetNWFloat("slam",CurTime()) end
+		if ((self:GetPos()-goal):GetNormalized():Dot(self.dir*moving)>0) then
+			self:SetNWFloat("slam",CurTime())
+			self.moving=false
 
-			self.moving=0
-			self:SetPos(Vector(self:GetPos().x,self:GetPos().y,goal))
-
-			if (self.sound>=0) then
+			if (self.sound~=-1) then
 				self:StopLoopingSound(self.sound)
 				self.sound=-1
 			end
 			if (self.stopSound~=nil) then self:EmitSound(self.stopSound) end
 
-			if (WireLib~=nil) then WireLib.TriggerOutput(self,"moving",self.moving) end
+			self:SetPos(goal)
+
+			if (WireLib~=nil) then WireLib.TriggerOutput(self,"moving",0) end
 		end
 
-		if (self.moving==-1) then
-			if (self.hullTick>5) then
-				local mins,maxs=self:GetRotatedAABB(self:OBBMins(),self:OBBMaxs())
-				local pos=self:GetPos()
-				local tr=util.TraceHull({
-					start=pos,
-					endpos=pos,
-					maxs=maxs,
-					mins=mins,
-					ignoreworld=true,
-					filter=self
-				})
-				if tr.Hit then tr.Entity:TakeDamage(999) end
-
-				self.hullTick=0
-			else self.hullTick=(self.hullTick+1) end
+		if !(self.isOpen) then
+			local mins,maxs=self:GetRotatedAABB(self:OBBMins()+Vector(1,1,1),self:OBBMaxs()-Vector(1,1,1))
+			local tr=util.TraceHull({
+				start=self:GetPos(),
+				endpos=self:GetPos()+(self.dir*math.max(self.speed,1)*2),
+				maxs=maxs,
+				mins=mins,
+				ignoreworld=true,
+				filter=self
+			})
+			if tr.Hit then tr.Entity:TakeDamage(999) end
 		end
 
 		self:NextThink(CurTime())
@@ -128,16 +107,14 @@ function ENT:Think()
 	end
 end
 
-function ENT:OnRemove()
-	if (self.sound>=0) then self:StopLoopingSound(self.sound) end
-end
+function ENT:OnRemove() if (self.sound>=0) then self:StopLoopingSound(self.sound) end end
 
 function ENT:Draw()
 	local since=(CurTime()-self:GetNWFloat("slam"))
 
-	local v=Vector(0,0,math.sin(since*48)*math.abs(math.min(.8,since)-.8)*1)
+	local v=Vector(0,math.sin(since*48)*math.abs(math.min(.8,since)-.8),0)
 	v:Rotate(self:GetAngles())
-	self:SetPos(Vector(self.closed.x,self.closed.y,self:GetPos().z)+v)
+	self:SetPos(self:GetPos()+v)
 
 	self:DrawModel()
 end
@@ -146,7 +123,7 @@ if SERVER then
 	numpad.Register("ffvgate_toggle",function(ply,ent)
 		if !(IsValid(ent)) then return end
 
-		ent:setOpen(!(ent.open))
+		ent:setOpen(!(ent.isOpen))
 	end)
 end
 
@@ -156,3 +133,29 @@ end)
 hook.Add("CanPlayerUnfreeze","ffvgate_nounfreeze",function(ply,ent,phys)
 	if (ent:GetClass()=="ffv_gate") then return false end
 end)
+
+--wiremood
+function ENT:TriggerInput(name,val)
+	if (name=="open") then self:setOpen(val>0)
+	elseif (name=="speed") then self.speed=val end
+end
+
+function ENT:PreEntityCopy()
+	if (WireLib~=nil) then
+		duplicator.ClearEntityModifier(self,"WireDupeInfo")
+		local info=WireLib.BuildDupeInfo(self)
+		if info then duplicator.StoreEntityModifier(self,"WireDupeInfo",info) end
+	end
+end
+local function EntityLookup(CreatedEntities)
+	return function(id,default)
+		if (id==nil) then return default end
+		if (id==0) then return game.GetWorld() end
+		local ent = CreatedEntities[id]
+		if IsValid(ent) then return ent else return default end
+	end
+end
+function ENT:PostEntityPaste(ply,ent,createdEnts)
+	if ((WireLib~=nil) and ent.EntityMods and ent.EntityMods.WireDupeInfo) then WireLib.ApplyDupeInfo(ply,ent,ent.EntityMods.WireDupeInfo,EntityLookup(createdEnts)) end
+end
+--weeirmode
