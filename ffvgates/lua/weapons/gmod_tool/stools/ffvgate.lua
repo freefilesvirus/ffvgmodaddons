@@ -48,8 +48,17 @@ if CLIENT then
 			a2p2=net.ReadVector()
 			x=(a2p1-a2p2):Length()
 			y=(a1p1-a1p2):Length()
-			pos=((a2p1+a2p2)/2)
 			angle=net.ReadAngle()
+
+			local bl=(Vector(1,1,1)*math.huge)
+			local tr=Vector(1,1,1)*-math.huge
+			for k,v in pairs({a1p1,a1p2,a2p1,a2p2}) do
+				for xyz=1,3 do
+					if (v[xyz]<bl[xyz]) then bl[xyz]=v[xyz] end
+					if (v[xyz]>tr[xyz]) then tr[xyz]=v[xyz] end
+				end
+			end
+			pos=((bl+tr)/2)
 		end
 	end)
 
@@ -141,15 +150,16 @@ function TOOL:LeftClick(trace)
 			net.Send(self:GetOwner())
 		end
 	elseif (stage==1) then
-		if (math.abs(self:GetNormal(0):Dot(trace.HitNormal))==1) then
+		if (math.abs(self:GetNormal(0):Dot(trace.HitNormal))>=.9) then
 			self:fail("axes need to be perpendicular!")
 			return false
 		end
 
 		local traces={}
-		local midPos=((self:GetPos(0)+self:GetPos(1))/2)
+		local shootFrom=(self:GetPos(0)+(self:GetNormal(0)*(trace.HitPos-self:GetPos(0)):Dot(self:GetNormal(0))))
+		local shootDir=(shootFrom-trace.HitPos):GetNormalized()*trace.HitNormal
 		for k=-1,1,2 do
-			local tr=util.TraceLine({start=midPos,endpos=midPos+(trace.HitNormal*maxSize:GetFloat()*k)})
+			local tr=util.TraceLine({start=shootFrom,endpos=shootFrom+(shootDir*maxSize:GetFloat()*k)})
 			if (!(tr.Hit) or tr.HitSky) then
 				self:fail("cant find opposing side!")
 				return false
@@ -170,10 +180,20 @@ function TOOL:LeftClick(trace)
 			net.Send(self:GetOwner())
 		end
 	elseif ((stage==2) and SERVER) then
-		local gate=makeGate(self:GetOwner(),(self:GetPos(2)+self:GetPos(3))/2,self:GetNormal(2):AngleEx(self:GetNormal(0)), --ply pos ang
+		local bl=(Vector(1,1,1)*math.huge)
+		local tr=Vector(1,1,1)*-math.huge
+		for k=0,3 do
+			local v=self:GetPos(k)
+			for xyz=1,3 do
+				if (v[xyz]<bl[xyz]) then bl[xyz]=v[xyz] end
+				if (v[xyz]>tr[xyz]) then tr[xyz]=v[xyz] end
+			end
+		end
+
+		local gate=makeGate(self:GetOwner(),(bl+tr)/2,self:GetNormal(2):AngleEx(self:GetNormal(0)), --ply pos ang
 			self:GetClientInfo("mat"),self:GetClientNumber("key"),math.abs((self:GetPos(2)-self:GetPos(3)):Length()), --mat key x
-			math.abs((self:GetPos(0)-self:GetPos(1)):Length()),self:GetClientNumber("width"),self:GetClientNumber("speed"), --y width speed
-			self:GetClientNumber("shake"),self:GetClientInfo("movesound"),self:GetClientInfo("stopsound"),self:GetClientBool("toggle")) --the names are right there
+			math.abs((self:GetPos(0)-self:GetPos(1)):Length()),math.min(self:GetClientNumber("width"),maxSize:GetFloat()),self:GetClientNumber("speed"), --y width speed
+			self:GetClientBool("shake"),self:GetClientInfo("movesound"),self:GetClientInfo("stopsound"),self:GetClientBool("toggle")) --the names are right there
 
 		undo.Create("gate")
 		undo.AddEntity(gate)

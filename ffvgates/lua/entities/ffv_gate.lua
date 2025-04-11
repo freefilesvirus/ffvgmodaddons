@@ -75,8 +75,10 @@ function ENT:Think()
 		self:SetPos(to)
 
 		if ((self:GetPos()-goal):GetNormalized():Dot(self.dir*moving)>0) then
-			self:SetNWFloat("slam",CurTime())
 			self.moving=false
+
+
+			if self.shake then self:SetNWFloat("slam",CurTime()) end
 
 			if (self.sound~=-1) then
 				self:StopLoopingSound(self.sound)
@@ -90,16 +92,22 @@ function ENT:Think()
 		end
 
 		if !(self.isOpen) then
-			local mins,maxs=self:GetRotatedAABB(self:OBBMins()+Vector(1,1,1),self:OBBMaxs()-Vector(1,1,1))
-			local tr=util.TraceHull({
-				start=self:GetPos(),
-				endpos=self:GetPos()+(self.dir*math.max(self.speed,1)*2),
-				maxs=maxs,
-				mins=mins,
-				ignoreworld=true,
-				filter=self
-			})
-			if tr.Hit then tr.Entity:TakeDamage(999) end
+			local checks=0
+			local lastHit=true
+			local filter={self}
+			while ((checks<88) and lastHit) do
+				lastHit=false
+				checks=(checks+1)
+
+				local tr=util.TraceEntityHull({start=self:GetPos(),endpos=self:GetPos(),ignoreworld=true,filter=filter},self)
+				if tr.Hit then
+					lastHit=true
+					table.insert(filter,tr.Entity)
+
+					tr2=util.TraceEntityHull({start=tr.Entity:GetPos(),endpos=tr.Entity:GetPos(),ignoreworld=true,filter=tr.Entity},tr.Entity)
+					if (tr2.Entity==self) then tr.Entity:TakeDamage(999) end
+				end
+			end
 		end
 
 		self:NextThink(CurTime())
