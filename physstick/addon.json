@@ -1,4 +1,9 @@
 {
 	"title": "pick up stick",
-	"type": "ServerContent"
+	"type": "ServerContent",
+	"tags": 
+	[
+		"build",
+		"fun"
+	]
 }

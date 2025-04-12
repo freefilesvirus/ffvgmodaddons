@@ -33,7 +33,8 @@ function physstick(ply,ent)
 
 	local welds={}
 	for k,v in pairs(toStick) do
-		table.insert(welds,constraint.Weld(ent,v,0,0))
+		local weld=constraint.Weld(ent,v,0,0)
+		if IsValid(weld) then table.insert(welds,weld) end
 	end
 	checkHeld(ent,welds)
 end
