@@ -16,13 +16,14 @@ ENT.sound=-1
 
 ENT.moving=false
 ENT.speed=1
-ENT.vel=0
 ENT.closed=Vector(0,0,0)
 ENT.open=Vector(0,0,0)
 ENT.dir=Vector(0,0,0)
 
 ENT.moveSound=nil
 ENT.stopSound=nil
+
+ENT.lastPos=Vector(0,0,0)
 
 local function sign(x)
 	return ((x==0) and 0 or ((x>0) and 1 or -1))
@@ -33,10 +34,12 @@ function ENT:Initialize()
 
 	self:SetModel("models/hunter/blocks/cube4x4x4.mdl")
 	self:PhysicsInit(SOLID_VPHYSICS)
-	self:GetPhysicsObject():EnableMotion(false)
 
 	local min,max=self:GetModelBounds()
 	scales.Scale(self,Vector(self.x+2,self.width,self.y+2)/(max-min))
+
+	self:SetMoveType(MOVETYPE_PUSH)
+	self:MakePhysicsObjectAShadow()
 
 	if (WireLib~=nil) then
 		WireLib.CreateInputs(self,{"open","speed"})
@@ -50,8 +53,11 @@ function ENT:setOpen(open)
 
 	local goal=(self.isOpen and self.open or self.closed)
 
+	self:SetSaveValue("m_flMoveDoneTime",self:GetSaveTable(false).ltime+((goal-self:GetPos()):Length()/(math.min(self.speed,50)*128)))
+	self:SetLocalVelocity((goal-self:GetPos()):GetNormalized()*math.min(self.speed,50)*128)
+
 	self.moving=true
-	self.vel=0
+	--self.vel=0
 	if ((self.sound==-1) and (self.moveSound~=nil)) then self.sound=self:StartLoopingSound(self.moveSound) end
 
 	if (WireLib~=nil) then
@@ -61,22 +67,23 @@ function ENT:setOpen(open)
 end
 
 function ENT:Think()
-	if CLIENT then return end
+	if CLIENT then return true end
 
 	if self.moving then
 		local goal=(self.isOpen and self.open or self.closed)
 
-		self.vel=math.min(self.vel+.01,1)
-		local moving=(self.isOpen and 1 or -1)
-		local to=self:GetPos()
-		for xyz=1,3 do
-			to[xyz]=(to[xyz]+(self.dir[xyz]*self.vel*self.speed*4*moving))
-		end
-		self:SetPos(to)
+		if ((self:GetPos()-self.lastPos):LengthSqr()==0) then
+			local mins,maxs=self:GetRotatedAABB(self:OBBMins(),self:OBBMaxs())
+			local tr=util.TraceHull({start=self:GetPos(),endpos=goal,mins=mins,maxs=maxs,filter=self,ignoreworld=true})
 
-		if ((self:GetPos()-goal):GetNormalized():Dot(self.dir*moving)>0) then
+			if tr.Hit then tr.Entity:TakeDamage(999) end
+		end
+		self.lastPos=self:GetPos()
+
+		if ((self:GetPos()-goal):LengthSqr()<2) then
 			self.moving=false
 
+			self:SetPos(goal)
 
 			if self.shake then self:SetNWFloat("slam",CurTime()) end
 
@@ -86,28 +93,7 @@ function ENT:Think()
 			end
 			if (self.stopSound~=nil) then EmitSound(self.stopSound,self.closed) end
 
-			self:SetPos(goal)
-
 			if (WireLib~=nil) then WireLib.TriggerOutput(self,"moving",0) end
-		end
-
-		if !(self.isOpen) then
-			local checks=0
-			local lastHit=true
-			local filter={self}
-			while ((checks<88) and lastHit) do
-				lastHit=false
-				checks=(checks+1)
-
-				local tr=util.TraceEntityHull({start=self:GetPos(),endpos=self:GetPos(),ignoreworld=true,filter=filter},self)
-				if tr.Hit then
-					lastHit=true
-					table.insert(filter,tr.Entity)
-
-					tr2=util.TraceEntityHull({start=tr.Entity:GetPos(),endpos=tr.Entity:GetPos(),ignoreworld=true,filter=tr.Entity},tr.Entity)
-					if (tr2.Entity==self) then tr.Entity:TakeDamage(999) end
-				end
-			end
 		end
 
 		self:NextThink(CurTime())
