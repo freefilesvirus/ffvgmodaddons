@@ -16,14 +16,53 @@ ENT.isffvrobot = true
 ENT.willFight = false
 ENT.friendly = true
 
+ENT.light=nil
+ENT.rt=nil
+
+function ENT:OnEntityCopyTableFinish(data)
+	data.parts={}
+	data.sounds={}
+end
+
+function ENT:Draw()
+	local toDraw={self}
+	table.Add(toDraw,self.parts)
+	for k,v in pairs(toDraw) do v:DrawModel() end
+end
+
 function ENT:Initialize()
-	if CLIENT then return end
+	if CLIENT then
+		if not game.SinglePlayer() then
+			net.Start("ffvbot_clientparts")
+			net.WriteEntity(self)
+			net.SendToServer()
+		end
+
+		return
+	end
+
 	self:SetHealth(self.maxHealth)
 	self:SetHullType( HULL_MEDIUM )
 	self:SetHullSizeNormal()
 	self:SetActivity(ACT_COVER)
 
+	local sound = CreateSound(self,"vehicles/diesel_loop2.wav")
+	sound:PlayEx(.6,180)
+	table.insert(self.sounds,sound)
+
 	self:extraInit()
+
+	self.light=self.parts[#self.parts]
+
+	if game.SinglePlayer() then self:sendClientParts() end
+end
+
+function ENT:sendClientParts()
+	net.Start("ffvbot_clientparts")
+	net.WriteEntity(self)
+	net.WriteInt(#self.parts,12)
+	for k,v in pairs(self.parts) do net.WriteEntity(v) end
+	net.Broadcast()
 end
 
 ENT.dead=false
@@ -351,7 +390,11 @@ function ENT:movement(pos)
 	rampMod = (((rampMod<0) and math.abs(rampMod/10)) or 0)
 	phys:AddVelocity(self:GetForward()*((2*lookMod)+rampMod))
 
-	if ((tr.endpos:DistToSqr(self.goalPos)<600) or (self:GetPos():DistToSqr(self.goalPos)<600)) then self.goalPos = nil end
+	if (IsValid(self.goalPos) and (tr.endpos:DistToSqr(self.goalPos)<600 or self:GetPos():DistToSqr(self.goalPos)<600)) then
+		self.goalPos = nil
+		return true
+	end
+	return false
 end
 ------------------------------------------------------------
 
@@ -535,7 +578,40 @@ properties.Add( "watchffvrobot", {
 	end
 
 } )
-if SERVER then util.AddNetworkString("markbotlight") end
+if SERVER then
+	util.AddNetworkString("markbotlight")
+	util.AddNetworkString("ffvbot_clientparts")
+
+	net.Receive("ffvbot_clientparts",function() net.ReadEntity():sendClientParts() end)
+else
+	net.Receive("ffvbot_clientparts",function()
+		local bot=net.ReadEntity()
+		if not IsValid(bot) then return end
+
+		local numParts=net.ReadInt(12)
+		if numParts>0 then
+			for k=1,numParts do table.insert(bot.parts,net.ReadEntity()) end
+		end
+
+		bot.light=bot.parts[#bot.parts]
+		bot.rt=GetRenderTarget("ffvbotrt_"..bot:EntIndex(),300,300)
+	end)
+
+	ENT.waitingUpdate=false
+	function ENT:updateRt() self.waitingUpdate=true end
+
+	hook.Add("PreRender","ffvbot_rt",function()
+		for _,v in ipairs(ents.FindByClass("ffv_*")) do
+			if v.isffvrobot and v.waitingUpdate then
+				render.PushRenderTarget(v.rt)
+				cam.Start2D()
+				render.RenderView({origin=v.light:GetPos(),angles=v.light:GetAngles(),x=0,y=0,h=300,w=300,fov=150,drawviewmodel=false,drawviewer=true})
+				cam.End2D()
+				render.PopRenderTarget()
+			end
+		end
+	end)
+end
 net.Receive("markbotlight",function()
 	net.ReadEntity().isbotlight = true
 end)

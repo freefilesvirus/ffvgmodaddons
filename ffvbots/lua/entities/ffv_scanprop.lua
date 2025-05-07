@@ -3,10 +3,14 @@ ENT.Base = "base_gmodentity"
 ENT.Type = "anim"
 ENT.Spawnable = false
 
+ENT.model=""
+ENT.size=2
+
 function ENT:Draw()
+	if self.model~=self:GetModel() then return end
+
 	local mat = Matrix()
-	local size = 8/self:GetNWFloat("size")
-	mat:Scale(Vector(size,size,size))
+	mat:Scale(Vector(self.size,self.size,self.size))
 	self:EnableMatrix("RenderMultiply",mat)
 	render.MaterialOverride(Material("models/props_combine/stasisshield_sheet"))
 	self:DrawModel()
@@ -33,9 +37,26 @@ end
 
 function ENT:Initialize()
 	self:DrawShadow(false)
-	if CLIENT then return end
-	self:SetModel("models/props_c17/doll01.mdl")
 	self:SetRenderMode(RENDERMODE_TRANSCOLOR)
 
-	self:SetNWFloat("size",self:GetModelBounds():Length())
+	if SERVER then self:SetModel(self:GetModel()) end
+end
+
+function ENT:setModel(model)
+	self:SetModel(model)
+
+	net.Start("ffvbot_holo")
+	net.WriteEntity(self)
+	net.WriteString(model)
+	net.WriteFloat(8/self:GetModelBounds():Length())
+	net.Broadcast()
+end
+
+if SERVER then util.AddNetworkString("ffvbot_holo")
+else
+	net.Receive("ffvbot_holo",function()
+		local bot=net.ReadEntity()
+		bot.model=net.ReadString()
+		bot.size=net.ReadFloat()
+	end)
 end

@@ -1,7 +1,7 @@
 AddCSLuaFile()
 
 ENT.Base = "ffv_basebot"
-ENT.PrintName = "Janitor Bot"
+ENT.PrintName = "janitor bot"
 ENT.Spawnable = false
 
 ENT.plugAng = Angle(90,0,0)
@@ -19,6 +19,11 @@ ENT.jumping = false
 --1 is go to body
 --2 is dissolve body
 ENT.state = 0
+
+function ENT:OnEntityCopyTableFinish(data)
+	self.BaseClass.OnEntityCopyTableFinish(self,data)
+	table.remove(data.Constraints,1)
+end
 
 function ENT:delayedThink()
 	--jump if fallen
@@ -267,10 +272,8 @@ function MakeDissolver( ent, position, attacker, dissolveType )
 end
 
 list.Set("NPC","ffv_corpsebot",{
-	Name = "Janitor Bot",
-	Class = "ffv_corpsebot",
-	Category = "Robots"
+	Name=ENT.PrintName,
+	Class="ffv_corpsebot",
+	Category="robots"
 })
-
-if CLIENT then language.Add("ffv_corpsebot","Janitor Bot") end
-if SERVER then duplicator.RegisterEntityClass("ffv_corpsebot",function(ply,data) return end,nil) end
+if CLIENT then language.Add("ffv_corpsebot",ENT.PrintName) end

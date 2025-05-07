@@ -1,7 +1,7 @@
 AddCSLuaFile()
 
 ENT.Base = "ffv_basebot"
-ENT.PrintName = "Hoarding Bot"
+ENT.PrintName = "hoarding bot"
 ENT.Spawnable = false
 
 ENT.state = 0
@@ -398,10 +398,8 @@ hook.Add("ShouldCollide","hoardbotHoardCollision",function(ent1,ent2)
 end)
 
 list.Set("NPC","ffv_hoardbot",{
-	Name = "Hoarding Bot",
-	Class = "ffv_hoardbot",
-	Category = "Robots"
+	Name=ENT.PrintName,
+	Class="ffv_hoardbot",
+	Category="robots"
 })
-
-if CLIENT then language.Add("ffv_hoardbot","Hoarding Bot") end
-if SERVER then duplicator.RegisterEntityClass("ffv_hoardbot",function(ply,data) return end,nil) end
+if CLIENT then language.Add("ffv_hoardbot",ENT.PrintName) end

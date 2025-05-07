@@ -1,7 +1,7 @@
 AddCSLuaFile()
 
 ENT.Base = "ffv_basebot"
-ENT.PrintName = "Cop Bot"
+ENT.PrintName = "cop bot"
 ENT.Spawnable = false
 
 ENT.maxHealth = 300
@@ -353,10 +353,8 @@ function ENT:lookTargetInterest(ent)
 end
 
 list.Set("NPC","ffv_copbot",{
-	Name = "Cop Bot",
-	Class = "ffv_copbot",
-	Category = "Robots"
+	Name=ENT.PrintName,
+	Class="ffv_copbot",
+	Category="robots"
 })
-
-if CLIENT then language.Add("ffv_copbot","Cop Bot") end
-if SERVER then duplicator.RegisterEntityClass("ffv_copbot",function(ply,data) return end,nil) end
+if CLIENT then language.Add("ffv_copbot",ENT.PrintName) end

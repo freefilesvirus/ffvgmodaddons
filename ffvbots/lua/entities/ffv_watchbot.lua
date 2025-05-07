@@ -1,7 +1,7 @@
 AddCSLuaFile()
 
 ENT.Base = "ffv_basebot"
-ENT.PrintName = "Observation Bot"
+ENT.PrintName = "observation bot"
 ENT.Spawnable = false
 
 ENT.lookVar = Vector(0,0,0)
@@ -10,6 +10,12 @@ ENT.lookVarSize = 1
 ENT.forward = 1
 ENT.goalAngle = false
 ENT.moveSpeed = 6.5
+
+list.Set("NPC","ffv_watchbot",{
+	Name=ENT.PrintName,
+	Class="ffv_watchbot",
+	Category="robots"
+})
 
 local pictureChance=CreateConVar("ffvbot_takepicturechance_onein",20)
 
@@ -155,9 +161,9 @@ function ENT:tickThink()
 	targetPos = targetPos+((self.lookVar/100)*(self:GetPos():Distance(targetPos)))
 	local angoal = (targetPos-(latGear:GetPos())):Angle()
 	local latDif = math.AngleDifference(latGear:GetAngles().y,angoal.y)
-	local latSound = self.sounds[1]
+	local latSound = self.sounds[2]
 	local longDif = math.AngleDifference(longGear:GetAngles().x,angoal.x)
-	local longSound = self.sounds[2]
+	local longSound = self.sounds[3]
 	if self.grounded then
 		local preMove = latGear:GetLocalAngles()
 		latGear:SetLocalAngles(latGear:GetLocalAngles()-Angle(0,latDif/8,0))
@@ -249,9 +255,6 @@ function ENT:extraInit()
 		sound:PlayEx(0,100)
 		table.insert(self.sounds,sound)
 	end
-	local sound = CreateSound(self,"vehicles/diesel_loop2.wav")
-	sound:PlayEx(.6,180)
-	table.insert(self.sounds,sound)
 end
 
 function ENT:extraTakeDamage(info)
@@ -309,11 +312,12 @@ function ENT:screenshot()
 	if self.target then
 		local name = "thing"
 		if (self.target:GetClass()=="ffv_watchbot") then name="franklin" end
-		if (self.target:GetClass()=="ffv_hoardbot") then name="thief" end
+		if (self.target:GetClass()=="ffv_hoardbot") then name=(math.Rand(0,1)>.5 and "calvin" or "thief") end
 		if (self.target:GetClass()=="ffv_copbot") then name="johnny" end
-		if string.StartsWith(self.target:GetClass(),"ffv_corpse") then name="hunk" end
-		if (self.target:GetClass()=="ffv_sawbot") then name="asshole" end
-		if (self.target:GetClass()=="ffv_skaterbot") then name="asshole" end
+		if string.StartsWith(self.target:GetClass(),"ffv_corpse") then name=(math.Rand(0,1)>.5 and "kramer" or "hunk") end
+		if (self.target:GetClass()=="ffv_sawbot") then name=(math.Rand(0,1)>.5 and "spinley" or "asshole") end
+		if (self.target:GetClass()=="ffv_skaterbot") then name=(math.Rand(0,1)>.5 and "owen" or "asshole") end
+		if (self.target:GetClass()=="ffv_scanbot") then name="jack" end
 
 		if self.target:IsPlayer() then
 			if randomChance(4) then name = "friend"
@@ -333,15 +337,6 @@ function ENT:screenshot()
 		end
 		if randomChance(2) then filename = filename.."."..name end
 	end
-	--rt camera
-	local cam = ents.Create("point_camera")
-	cam:SetKeyValue("GlobalOverride","1")
-	cam:SetKeyValue("FOV","150")
-	cam:Spawn()
-	cam:SetParent(light)
-	cam:SetLocalPos(Vector(0,0,0))
-	cam:SetLocalAngles(Angle(0,0,0))
-	cam:Activate()
 	--get players
 	local plys = {}
 	for k,v in ipairs(player.GetAll()) do
@@ -349,51 +344,48 @@ function ENT:screenshot()
 	end
 	--tell client to save
 	net.Start("watchbotPicture")
+		net.WriteEntity(self)
 		net.WriteString(filename)
 	net.Send(plys)
 
 	light:Input("TurnOff",nil,nil,true)
+	self.parts[#self.parts-1]:SetSkin(1)
 	timer.Simple(0.2,function()
 		if (not IsValid(light)) then return end
+	self.parts[#self.parts-1]:SetSkin(0)
 		light:Input("TurnOn",nil,nil,true)
 	end)
 end
 
-local overlay = Material("materials/ffvrobots/overlaysquare.png")
 net.Receive("watchbotPicture",function()
-	if SERVER then return end
-
+	local bot=net.ReadEntity()
 	local filename = net.ReadString()
 
-	cam.Start2D()
-		surface.SetDrawColor(255,255,255,255)
-		surface.SetTexture(surface.GetTextureID("pp/rt"))
-		surface.DrawTexturedRect(0,0,300,300)
-		surface.SetMaterial(overlay)
-		surface.DrawTexturedRect(0,0,300,300)
-		local texture = render.Capture({
-			x=60,
-			y=60,
-			w=180,
-			h=180,
-			format="jpeg",	--PNG doesn't render/export correctly and wastes space for most users.
-			--quality=96	--GMod's default is 90, values of 96 and above are high quality.
-		})
-		if (not file.Exists("data/observationbot","GAME")) then file.CreateDir("observationbot") end
-		file.Write("observationbot/"..filename..".jpg",texture)
-	cam.End2D()
+	bot:updateRt()
+	timer.Simple(.1,function() --give it time to updatert
+		local view=Material("a")
+		view:SetTexture("$basetexture",bot.rt)
+		cam.Start2D()
+			surface.SetDrawColor(255,255,255,255)
+			surface.SetMaterial(view)
+			surface.DrawTexturedRect(0,0,300,300)
+			surface.SetMaterial(Material("materials/ffvrobots/overlaysquare.png"))
+			surface.DrawTexturedRect(0,0,300,300)
+			local texture = render.Capture({
+				x=60,
+				y=60,
+				w=180,
+				h=180,
+				format="jpeg",	--PNG doesn't render/export correctly and wastes space for most users.
+				--quality=96	--GMod's default is 90, values of 96 and above are high quality.
+			})
+			if (not file.Exists("data/observationbot","GAME")) then file.CreateDir("observationbot") end
+			file.Write("observationbot/"..filename..".jpg",texture)
+		cam.End2D()
+	end)
 end)
-
-list.Set("NPC","ffv_watchbot",{
-	Name = "Observation Bot",
-	Class = "ffv_watchbot",
-	Category = "Robots"
-})
 
 CreateClientConVar("ffvbot_savepictures","1",true,true)
 
-if CLIENT then language.Add("ffv_watchbot","Watching Bot") end
-if SERVER then
-	duplicator.RegisterEntityClass("ffv_watchbot",function(ply,data) return end,nil)
-	util.AddNetworkString("watchbotPicture")
-end
+if CLIENT then language.Add("ffv_watchbot",ENT.PrintName) end
+if SERVER then util.AddNetworkString("watchbotPicture") end

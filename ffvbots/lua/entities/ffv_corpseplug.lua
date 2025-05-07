@@ -10,3 +10,5 @@ function ENT:Initialize()
 	self:PhysicsInit(SOLID_VPHYSICS)
 	self:GetPhysicsObject():Wake()
 end
+
+function ENT:PostEntityPaste(ply,ent,data) self:Remove() end

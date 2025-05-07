@@ -1,7 +1,7 @@
 AddCSLuaFile()
 
 ENT.Base = "ffv_basebot"
-ENT.PrintName = "Saw Bot"
+ENT.PrintName = "saw bot"
 ENT.Spawnable = false
 
 ENT.willFight = true
@@ -159,8 +159,8 @@ function ENT:tickThink()
 	self.sawTurnSpeed = math.Clamp(self.sawTurnSpeed,0,20)
 	sawblade:SetLocalAngles(sawblade:GetLocalAngles()+Angle(self.sawTurnSpeed,0,0))
 	local vol = self.sawTurnSpeed/20
-	self.sounds[1]:ChangeVolume((not self.sawGrounded) and vol or 0)
-	self.sounds[2]:ChangeVolume(self.sawGrounded and vol or 0)
+	self.sounds[2]:ChangeVolume((not self.sawGrounded) and vol or 0)
+	self.sounds[3]:ChangeVolume(self.sawGrounded and vol or 0)
 
 	--stlooks
 	local neck = self.parts[4]
@@ -301,10 +301,8 @@ function ENT:hit(ent,pos,normal,tracehit)
 end
 
 list.Set("NPC","ffv_sawbot",{
-	Name = "Saw Bot",
-	Class = "ffv_sawbot",
-	Category = "Robots"
+	Name=ENT.PrintName,
+	Class="ffv_sawbot",
+	Category="robots"
 })
-
-if CLIENT then language.Add("ffv_sawbot","Saw Bot") end
-if SERVER then duplicator.RegisterEntityClass("ffv_sawbot",function(ply,data) return end,nil) end
+if CLIENT then language.Add("ffv_sawbot",ENT.PrintName) end

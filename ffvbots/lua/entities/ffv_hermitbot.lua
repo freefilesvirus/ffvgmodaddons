@@ -1,7 +1,7 @@
 AddCSLuaFile()
 
 ENT.Base = "ffv_basebot"
-ENT.PrintName = "Hermit Bot"
+ENT.PrintName = "hermit bot"
 ENT.Spawnable = false
 
 ENT.peek = 0
@@ -26,10 +26,8 @@ function ENT:extraInit()
 end
 
 -- list.Set("NPC","ffv_hermitbot",{
--- 	Name = "Hermit Bot",
--- 	Class = "ffv_hermitbot",
--- 	Category = "Robots"
+-- 	Name=ENT.PrintName,
+-- 	Class="ffv_hermitbot",
+-- 	Category="robots"
 -- })
-
-if CLIENT then language.Add("ffv_hermitbot","Saw Bot") end
-if SERVER then duplicator.RegisterEntityClass("ffv_hermitbot",function(ply,data) return end,nil) end
+if CLIENT then language.Add("ffv_hermitbot",ENT.PrintName) end

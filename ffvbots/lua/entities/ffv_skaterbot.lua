@@ -1,7 +1,7 @@
 AddCSLuaFile()
 
 ENT.Base = "ffv_basebot"
-ENT.PrintName = "Skater Bot"
+ENT.PrintName = "skater bot"
 ENT.Spawnable = false
 
 ENT.lastGroundTrace=nil
@@ -366,10 +366,8 @@ function ENT:extraTakeDamage(info)
 end
 
 list.Set("NPC","ffv_skaterbot",{
-	Name = "Skater Bot",
-	Class = "ffv_skaterbot",
-	Category = "Robots"
+	Name=ENT.PrintName,
+	Class="ffv_skaterbot",
+	Category="robots"
 })
-
-if CLIENT then language.Add("ffv_skaterbot","Skater Bot") end
-if SERVER then duplicator.RegisterEntityClass("ffv_skaterbot",function(ply,data) return end,nil) end
+if CLIENT then language.Add("ffv_skaterbot",ENT.PrintName) end
