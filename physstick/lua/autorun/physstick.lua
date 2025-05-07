@@ -19,10 +19,11 @@ function physstick(ply,ent)
 		if tr.Hit then
 			table.insert(filter,tr.Entity)
 
-			local tr2=util.TraceLine({start=tr.Entity:GetPos(),endpos=Vector(tr.Entity:GetPos()[1],tr.Entity:GetPos()[2],(ent:GetPos()+mins)[3]),
-				ignoreworld=true,filter={ent},whitelist=true})
+			local constrained=false
+			for i,v in pairs(constraint.GetTable(ent)) do constrained=(constrained or tr.Entity==v.Ent1 or tr.Entity==v.Ent2) end
+
 			local phys=tr.Entity:GetPhysicsObject()
-			if (IsValid(phys) and phys:IsMotionEnabled() and (tr.Entity:GetPos()[3]>(ent:GetPos()+mins)[3]) and tr2.Hit) then
+			if (IsValid(phys) and (not constrained) and (tr.Entity:GetCollisionGroup()~=20) and phys:IsMotionEnabled() and (tr.Entity:GetPos()[3]>(ent:GetPos()+mins)[3]) and util.TraceLine({start=tr.Entity:GetPos(),endpos=Vector(tr.Entity:GetPos()[1],tr.Entity:GetPos()[2],(ent:GetPos()+mins)[3]),ignoreworld=true,filter={ent},whitelist=true}).Hit) then
 				table.insert(toStick,tr.Entity)
 			end
 		else lastHit=false end
