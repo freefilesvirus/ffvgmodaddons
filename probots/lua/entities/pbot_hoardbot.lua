@@ -1,6 +1,6 @@
 AddCSLuaFile()
 
-ENT.Base = "ffv_basebot"
+ENT.Base = "pbot_base"
 ENT.PrintName = "hoarding bot"
 ENT.Spawnable = false
 
@@ -31,7 +31,7 @@ function ENT:delayedThink()
 	local wanderRange = 300
 	local protectRange = 90000 --300 hu
 	local cautiousRange = 1000000 --1000 hu
-	local hoardmarker = ents.FindByClass("ffv_hoardmarker")[1]
+	local hoardmarker = ents.FindByClass("pbot_hoardmarker")[1]
 	if (self.state==0) then
 		--wander around near hoard
 
@@ -42,7 +42,7 @@ function ENT:delayedThink()
 		self.neck = 1
 
 		self.lookTarget = hoardmarker
-		if ((not self.goalPos) and randomChance(8)) then
+		if ((not self.goalPos) and math.random(8)==1) then
 			self.goalPos = hoardmarker:GetPos()+Vector(
 				math.random(-wanderRange,wanderRange),
 				math.random(-wanderRange,wanderRange),0)
@@ -68,7 +68,7 @@ function ENT:delayedThink()
 			self.goalPos = false
 		end
 		--go and find more props
-		if ((#closePlayers==0) and randomChance(6)) then
+		if ((#closePlayers==0) and math.random(6)==1) then
 			self.state = 2
 			self.target = nil
 		end
@@ -102,7 +102,7 @@ function ENT:delayedThink()
 		local dist = hoardmarker:GetPos():DistToSqr(self.target:GetPos())
 		if (self.target:IsPlayer() and (self.target:Health()<1)) then self.state = 3 end
 		if (dist>cautiousRange) then self.state = 3 end
-		if ((dist>protectRange) and randomChance(4)) then self.state = 3 end
+		if ((dist>protectRange) and math.random(4)==1) then self.state = 3 end
 		if (self.state==3) then self.goalPos = hoardmarker:GetPos() end
 	elseif (self.state==2) then
 		--find props
@@ -152,7 +152,7 @@ function ENT:delayedThink()
 		end
 
 		--chance to abort and check home
-		if randomChance(30) then self.state = 3 end
+		if math.random(30)==1 then self.state = 3 end
 	elseif (self.state==3) then
 		--run home
 
@@ -207,13 +207,13 @@ function ENT:tickThink()
 
 	--lamp look
 	local lookPos = self:GetPos()+(self:GetForward()*100)
-	if (IsValid(self.lookTarget) and lineOfSight(self,self.lookTarget)) then
+	if (IsValid(self.lookTarget) and self:lineOfSight(self.lookTarget)>0) then
 		self.lookVarSize = 4
 		if self.lookTarget:IsPlayer() then
 			lookPos = self.lookTarget:GetShootPos()-Vector(0,0,20)
 		elseif (self.lookTarget:IsNPC() or self.lookTarget:IsNextBot()) then
 			lookPos = self.lookTarget:WorldSpaceCenter()
-		elseif self.lookTarget.isffvrobot then
+		elseif self.lookTarget.isProbot then
 			lookPos = self.lookTarget.parts[#self.lookTarget.parts]:GetPos()
 		else
 			lookPos = self.lookTarget:GetPos()
@@ -234,10 +234,6 @@ function ENT:tickThink()
 	if self.backing then
 		phys:AddVelocity(-self:GetForward()*self.speed)
 	end
-
-	--friction
-	if self.touchingGround then phys:SetVelocity(phys:GetVelocity()*.9) end
-	if self.touchingGround then phys:SetAngleVelocity(phys:GetAngleVelocity()*.9) end
 
 	--spin da wheel
 	if (self.grounded or self.touchingGround) then
@@ -311,53 +307,60 @@ function ENT:movement(pos)
 	end
 end
 
-function ENT:extraInit()
-	self:SetModel("models/props_lab/kennel_physics.mdl")
-	self:PhysicsInit(SOLID_VPHYSICS)
-	self:GetPhysicsObject():SetMaterial("gmod_ice")
+function ENT:Initialize()
+	if SERVER then
+		self:SetModel("models/props_lab/kennel_physics.mdl")
+		self:PhysicsInit(SOLID_VPHYSICS)
 
-	--add parts
-	self:addPart("models/props_c17/FurnitureShelf001b.mdl",Vector(0,7.8,0),Angle(0,90,0))
-	self:addPart("models/props_c17/FurnitureShelf001b.mdl",Vector(0,-7.8,0),Angle(0,90,0))
-	self:addPart("models/props_c17/pulleywheels_large01.mdl",Vector(0,27,21),Angle(0,90,0))
-	self:addPart("models/props_c17/pulleywheels_large01.mdl",Vector(0,-27,21),Angle(0,90,0))
-	self:addPart("models/props_junk/propane_tank001a.mdl",Vector(10,0,45),Angle(20,90,90))
-	local lamp = self:addPart("models/props_wasteland/light_spotlight01_lamp.mdl",Vector(-12,0,10),Angle(0,0,0))
-	self:makeLight(lamp)
+		--add parts
+		self:addPart("models/props_c17/FurnitureShelf001b.mdl",Vector(0,7.8,0),Angle(0,90,0))
+		self:addPart("models/props_c17/FurnitureShelf001b.mdl",Vector(0,-7.8,0),Angle(0,90,0))
+		self:addPart("models/props_c17/pulleywheels_large01.mdl",Vector(0,27,21),Angle(0,90,0))
+		self:addPart("models/props_c17/pulleywheels_large01.mdl",Vector(0,-27,21),Angle(0,90,0))
+		self:addPart("models/props_junk/propane_tank001a.mdl",Vector(10,0,45),Angle(20,90,90))
+		local lamp = self:addPart("models/props_wasteland/light_spotlight01_lamp.mdl",Vector(-12,0,10),Angle(0,0,0))
+		self:makeLight(lamp)
 
-	--check for hoardmarker
-	if (#ents.FindByClass("ffv_hoardmarker")==0) then
-		local marker = ents.Create("ffv_hoardmarker")
-		marker:SetPos(self:GetPos()-Vector(0,0,32))
-		marker:Spawn()
-	else
-		self.state = 3
+		--check for hoardmarker
+		if (#ents.FindByClass("pbot_hoardmarker")==0) then
+			local marker = ents.Create("pbot_hoardmarker")
+			marker:SetPos(self:GetPos()-Vector(0,0,32))
+			marker:Spawn()
+		else
+			self.state = 3
+		end
+
+		self:SetCustomCollisionCheck(true)
 	end
 
-	self:SetCustomCollisionCheck(true)
+	self.BaseClass.Initialize(self)
 end
 
-function ENT:extraTakeDamage(info)
-	if ((self.state==1) and randomChance(6)) then
+function ENT:OnTakeDamage(info)
+	if ((self.state==1) and math.random(6)==1) then
 		self.state = 3
 		self.target = nil
 	elseif (self.state==2) then
-		if randomChance(2) then
+		if math.random(2)==1 then
 			self.state = 3
 			self.target = nil
 		end
 	elseif (self.state==3) then
-		if (IsValid(self.rope) and randomChance(3)) then
+		if (IsValid(self.rope) and math.random(3)==1) then
 			self.rope:Remove() self:EmitSound("npc/turret_floor/click1.wav")
 		end
 	end
+
+	self.BaseClass.OnTakeDamage(self,info)
 end
 
-function ENT:extraRemove()
-	if (#ents.FindByClass("ffv_hoardbot")==0) then
-		hoardmarker = ents.FindByClass("ffv_hoardmarker")[1]
+function ENT:OnRemove()
+	if (#ents.FindByClass("pbot_hoardbot")==0) then
+		hoardmarker = ents.FindByClass("pbot_hoardmarker")[1]
 		if IsValid(hoardmarker) then hoardmarker:Remove() end
 	end
+
+	self.BaseClass.OnRemove(self)
 end
 
 function ENT:addPart(model,pos,ang)
@@ -373,7 +376,7 @@ function ENT:addPart(model,pos,ang)
 end
 
 function ENT:qualifyTarget(ent)
-	local hoardmarker = ents.FindByClass("ffv_hoardmarker")[1]
+	local hoardmarker = ents.FindByClass("pbot_hoardmarker")[1]
 	if (ent:GetPos():DistToSqr(hoardmarker:GetPos())<90000) then return false end
 	if (ent:GetPos():DistToSqr(self:GetPos())>1000000) then return false end
 	if (not (ent:GetClass()=="prop_physics")) then return false end
@@ -383,23 +386,23 @@ function ENT:qualifyTarget(ent)
 end
 
 function ENT:qualifyAttack(ent)
-	if (ent:GetClass()=="ffv_hoardbot") then return false end
-	if (ent:GetClass()=="ffv_copbot") then return false end
+	if (ent:GetClass()=="pbot_hoardbot") then return false end
+	if (ent:GetClass()=="pbot_copbot") then return false end
 	if (ent:IsPlayer() and (cvars.Number("ai_ignoreplayers")==0)) then return true end
-	if ent.isffvrobot then return true end
+	if ent.isProbot then return true end
 	return false
 end
 
 hook.Add("ShouldCollide","hoardbotHoardCollision",function(ent1,ent2)
-	if ((ent1:GetClass()=="ffv_hoardbot") and (ent2:GetClass()=="prop_physics")) then
-		local hoardmarker = ents.FindByClass("ffv_hoardmarker")[1]
+	if ((ent1:GetClass()=="pbot_hoardbot") and (ent2:GetClass()=="prop_physics")) then
+		local hoardmarker = ents.FindByClass("pbot_hoardmarker")[1]
 		return (not (ent2:GetPos():DistToSqr(hoardmarker:GetPos())<40000))
 	end
 end)
 
-list.Set("NPC","ffv_hoardbot",{
+list.Set("NPC","pbot_hoardbot",{
 	Name=ENT.PrintName,
-	Class="ffv_hoardbot",
-	Category="robots"
+	Class="pbot_hoardbot",
+	Category="probots"
 })
-if CLIENT then language.Add("ffv_hoardbot",ENT.PrintName) end
+if CLIENT then language.Add("pbot_hoardbot",ENT.PrintName) end

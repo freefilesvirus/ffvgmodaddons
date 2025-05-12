@@ -45,16 +45,16 @@ end
 function ENT:setModel(model)
 	self:SetModel(model)
 
-	net.Start("ffvbot_holo")
+	net.Start("pbot_holo")
 	net.WriteEntity(self)
 	net.WriteString(model)
 	net.WriteFloat(8/self:GetModelBounds():Length())
 	net.Broadcast()
 end
 
-if SERVER then util.AddNetworkString("ffvbot_holo")
+if SERVER then util.AddNetworkString("pbot_holo")
 else
-	net.Receive("ffvbot_holo",function()
+	net.Receive("pbot_holo",function()
 		local bot=net.ReadEntity()
 		bot.model=net.ReadString()
 		bot.size=net.ReadFloat()

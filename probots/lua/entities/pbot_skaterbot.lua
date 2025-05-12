@@ -1,6 +1,6 @@
 AddCSLuaFile()
 
-ENT.Base = "ffv_basebot"
+ENT.Base = "pbot_base"
 ENT.PrintName = "skater bot"
 ENT.Spawnable = false
 
@@ -50,6 +50,8 @@ function ENT:setGrounded()
 
 	if self.grounded then self.jumping=false end
 end
+
+function ENT:fixGroundedFriction() end
 
 function ENT:tickThink()
 	local phys=self:GetPhysicsObject()
@@ -101,8 +103,6 @@ function ENT:tickThink()
 end
 
 function ENT:delayedThink()
-	self:fixRelationships()
-
 	--crouch
 	local trace=util.TraceLine({
 		start=self:GetPos(),
@@ -155,7 +155,7 @@ function ENT:delayedThink()
 		end
 
 		--look around
-		if randomChance(2) then
+		if math.random(2)==1 then
 			local trace=util.TraceLine({
 				start=self:GetPos(),
 				endpos=(self:GetPos()+(self:GetForward()*Vector(400,400,0))),
@@ -182,7 +182,7 @@ function ENT:delayedThink()
 				table.insert(poss,trace.HitPos)
 				table.insert(fractions,trace.Fraction)
 			end
-			self.goalPos=poss[weightedRandom(fractions)]
+			self.goalPos=poss[self.weightedRandom(fractions)]
 		end
 	elseif (self.state==1) then
 		self.speed=1
@@ -191,7 +191,7 @@ function ENT:delayedThink()
 			self.state=0
 
 			return
-		elseif (((self:GetPos()*Vector(1,1,0)):DistToSqr(self.goalPos*Vector(1,1,0))<60000) and lineOfSight(self,self.goalPos)) then self.goalPos=nil end
+		elseif (((self:GetPos()*Vector(1,1,0)):DistToSqr(self.goalPos*Vector(1,1,0))<60000) and self:lineOfSight(self.goalPos)>0) then self.goalPos=nil end
 	elseif (self.state==2) then
 		self.speed=2
 
@@ -218,7 +218,7 @@ function ENT:delayedThink()
 		end
 
 		--abort
-		if (lineOfSight(self.target,self,-.94) and (dist>80000)) then
+		if (self.lineOfSight(self.target,self)>.9 and (dist>80000)) then
 			self.state=0
 		end
 	elseif (self.state==3) then
@@ -256,7 +256,7 @@ function ENT:delayedThink()
 	if (self.state<2) then
 		local targets=self:enemiesInLOS()
 		if istable(targets) then
-			self.target=targets[1][weightedRandom(targets[2])]
+			self.target=targets[1][self.weightedRandom(targets[2])]
 			self.state=2
 			self.toRetreat=self:GetPos()
 		end
@@ -267,7 +267,7 @@ function ENT:enemiesInLOS()
 	local enemies={}
 	local interests={}
 	for k,v in ipairs(ents.FindInSphere(self:GetPos(),1600)) do
-		if ((v:IsPlayer() or v:IsNPC() or v:IsNextBot() or v.isffvrobot) and lineOfSight(self,v:GetPos()) and (not self:getFriendly(v))) then
+		if ((v:IsPlayer() or v:IsNPC() or v:IsNextBot() or v.isProbot) and self:lineOfSight(v:GetPos())>0 and (not self:getFriendly(v))) then
 			local interest=self:getInterest(v)
 			if (interest>0) then
 				table.insert(enemies,v)
@@ -280,14 +280,14 @@ function ENT:enemiesInLOS()
 	return {enemies,interests}
 end
 
-function ENT:prePop()
-	for k=1,math.random(4) do
-		self:grenade(4+math.Rand(0,2))
-	end
+function ENT:pop()
+	for k=1,math.random(4) do self:grenade(4+math.Rand(0,2))end
+
+	self.BaseClass.pop(self)
 end
 
 function ENT:getInterest(ent)
-	if lineOfSight(ent,self,-.3) then return 0 end
+	if self.lineOfSight(ent,self)>-.3 then return 0 end
 	if ent:IsPlayer() then return 4 end
 	return 1
 end
@@ -313,7 +313,9 @@ function ENT:lookAt(pos)
 
 	self.lampGoal=-(self:GetPos()-pos):Angle().x
 
-	local look=math.NormalizeAngle(getRotated(pos-self:GetPos(),-self:GetAngles()):Angle().y)
+	local lookDif=pos-self:GetPos()
+	lookDif:Rotate(-self:GetAngles())
+	local look=math.NormalizeAngle(lookDif:Angle().y)
 	local lookMod=-math.Clamp((math.abs(look)-120)/120,-1,0)
 	local notLookMod=math.abs(lookMod-1)
 	if (lookMod<.9) then self:GetPhysicsObject():AddAngleVelocity(Vector(-math.Clamp(look,-2,2)*4*math.Clamp(notLookMod,.2,.4),-notLookMod*4,look/8)) end
@@ -328,46 +330,49 @@ function ENT:grenade(time)
 	grenadeProp:Input("SetTimer",nil,nil,time)
 end
 
-function ENT:extraInit()
-	self:SetNWBool("friendly",false)
-	self:fixRelationships()
+function ENT:Initialize()
+	if SERVER then
+		self:SetModel("models/props_borealis/bluebarrel001.mdl")
+		self:PhysicsInit(SOLID_VPHYSICS)
+		--parts
+		local pole = self:addPart("models/props_c17/signpole001.mdl",Vector(0,0,0),Angle(0,0,0))
+		self:addPart("models/props_vehicles/tire001c_car.mdl",Vector(0,0,-10),Angle(0,90,0)):SetParent(pole)
 
-	self:SetModel("models/props_borealis/bluebarrel001.mdl")
-	self:PhysicsInit(SOLID_VPHYSICS)
-	--parts
-	local pole = self:addPart("models/props_c17/signpole001.mdl",Vector(0,0,0),Angle(0,0,0))
-	self:addPart("models/props_vehicles/tire001c_car.mdl",Vector(0,0,-10),Angle(0,90,0)):SetParent(pole)
+		self:addPart("models/props_c17/pulleywheels_small01.mdl",Vector(0,0,-30),Angle(90,0,0))
+		local fin=self:addPart("models/props_interiors/refrigeratorDoor02a.mdl",Vector(-10,0,10),Angle(0,90,0))
+		self:addPart("models/props_c17/metalladder002b.mdl",Vector(14,0,20),Angle(0,0,180),.7)
+		self:addPart("models/props_wasteland/controlroom_filecabinet001a.mdl",Vector(2,0,12),Angle(0,180,0))
+		local pipe=self:addPart("models/props_c17/GasPipes006a.mdl",Vector(-5,-15,6),Angle(0,0,180))
+		constraint.CreateKeyframeRope(Vector(0,0,0),2,"cable/cable2",nil,fin,Vector(0,15,-8),0,pipe,Vector(-6,0,25),0,{["Slack"]=160})
+		self:addPart("models/props_junk/CinderBlock01a.mdl",Vector(-10,0,10),Angle(0,90,0))
+		self:addPart("models/props_junk/propane_tank001a.mdl",Vector(0,-14,3),Angle(0,0,180))
 
-	self:addPart("models/props_c17/pulleywheels_small01.mdl",Vector(0,0,-30),Angle(90,0,0))
-	local fin=self:addPart("models/props_interiors/refrigeratorDoor02a.mdl",Vector(-10,0,10),Angle(0,90,0))
-	self:addPart("models/props_c17/metalladder002b.mdl",Vector(14,0,20),Angle(0,0,180),.7)
-	self:addPart("models/props_wasteland/controlroom_filecabinet001a.mdl",Vector(2,0,12),Angle(0,180,0))
-	local pipe=self:addPart("models/props_c17/GasPipes006a.mdl",Vector(-5,-15,6),Angle(0,0,180))
-	constraint.CreateKeyframeRope(Vector(0,0,0),2,"cable/cable2",nil,fin,Vector(0,15,-8),0,pipe,Vector(-6,0,25),0,{["Slack"]=160})
-	self:addPart("models/props_junk/CinderBlock01a.mdl",Vector(-10,0,10),Angle(0,90,0))
-	self:addPart("models/props_junk/propane_tank001a.mdl",Vector(0,-14,3),Angle(0,0,180))
+		for k=0,2 do self:addPart("models/props_wasteland/panel_leverHandle001a.mdl",Vector(0,0,-10),Angle((30*(k-1))+3,0,0),1.7):SetParent(pole) end
+		self:addPart("models/props_junk/PopCan01a.mdl",Vector(0,0,-10),Angle(0,0,90),1.4):SetParent(pole)
 
-	for k=0,2 do self:addPart("models/props_wasteland/panel_leverHandle001a.mdl",Vector(0,0,-10),Angle((30*(k-1))+3,0,0),1.7):SetParent(pole) end
-	self:addPart("models/props_junk/PopCan01a.mdl",Vector(0,0,-10),Angle(0,0,90),1.4):SetParent(pole)
+		self:addPart("models/props_junk/garbage_coffeemug001a.mdl",Vector(16,0,0),Angle(0,-90,180),1.6)
 
-	self:addPart("models/props_junk/garbage_coffeemug001a.mdl",Vector(16,0,0),Angle(0,-90,180),1.6)
+		local lamp = self:addPart("models/props_wasteland/light_spotlight01_lamp.mdl",Vector(20,0,10),Angle(0,0,0))
+		self:makeLight(lamp)
+	end
 
-	local lamp = self:addPart("models/props_wasteland/light_spotlight01_lamp.mdl",Vector(20,0,10),Angle(0,0,0))
-	self:makeLight(lamp)
+	self.BaseClass.Initialize(self)
 end
 
-function ENT:extraTakeDamage(info)
+function ENT:OnTakeDamage(info)
 	local attacker=info:GetAttacker()
 	if ((attacker~=nil) and (self.state<3)) then
 		self.target=attacker
 		self.goalPos=attacker:GetPos()
 		self.state=4
 	end
+
+	self.BaseClass.OnTakeDamage(self,info)
 end
 
-list.Set("NPC","ffv_skaterbot",{
+list.Set("NPC","pbot_skaterbot",{
 	Name=ENT.PrintName,
-	Class="ffv_skaterbot",
-	Category="robots"
+	Class="pbot_skaterbot",
+	Category="probots"
 })
-if CLIENT then language.Add("ffv_skaterbot",ENT.PrintName) end
+if CLIENT then language.Add("pbot_skaterbot",ENT.PrintName) end
