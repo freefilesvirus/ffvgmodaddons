@@ -28,9 +28,7 @@ function EFFECT:Init(data)
 	table.insert(self.points,data:GetOrigin())
 	
 	local far=math.min(1,data:GetOrigin():DistToSqr(EyePos())/33333333)
-	timer.Simple(far/2,function()
-		EmitSound("ambient/explosions/explode_9.wav",data:GetOrigin(),1,CHAN_AUTO,1-far*.9,140)
-	end)
+	EmitSound("ambient/explosions/explode_9.wav",data:GetOrigin(),1,CHAN_AUTO,1-far*.9,140)
 	
 	util.ScreenShake(data:GetOrigin(),5,40,.4,1000,true)
 	
